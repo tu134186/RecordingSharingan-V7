@@ -84,6 +84,32 @@ jobs:
           path.write_text(src)
           print('Fixed mutable specifier assignments:',path)
           PY
+      - name: Fix Preferences private framework linking
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os,pathlib,re
+          project=pathlib.Path(os.environ['PROJECT_DIR'])
+          candidates=list(project.rglob('Makefile'))
+          patched=0
+          for path in candidates:
+              if 'Prefs' not in str(path) and 'prefs' not in str(path): continue
+              src=path.read_text()
+              lines=src.splitlines(keepends=True)
+              result=[]
+              for line in lines:
+                  if re.match(r'^\\s*\\w+_FRAMEWORKS\\s*[:+?]?=',line) and re.search(r'\\bPreferences\\b',line):
+                      line=re.sub(r'(?<!\\S)Preferences(?!\\S)','',line)
+                      patched+=1
+                  result.append(line)
+              if patched:
+                  result.append('\\n# Settings loads Preferences.framework at runtime; no SDK link stub available.\\n')
+                  result.append('ADDITIONAL_LDFLAGS += -Wl,-undefined,dynamic_lookup\\n')
+                  path.write_text(''.join(result))
+                  print('Adjusted Preferences bundle linking:',path)
+          if not patched:
+              raise SystemExit('No Preferences framework entry found in Preferences bundle Makefile; refusing unverified patch')
+          PY
       - name: Compile DEB
         shell: bash
         run: |
