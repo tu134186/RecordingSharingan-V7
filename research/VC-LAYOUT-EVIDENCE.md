@@ -27,3 +27,16 @@ Compare identity and geometry for `SBSystemApertureContainerView`, `SAUIElementV
 
 ## Axs skill relevance
 The shared Axs skill archive is general Theos/Logos engineering guidance, not an implementation of `SBSystemApertureViewController` layout.
+
+
+## External iOS 16 SpringBoard evidence (2026-10-24)
+- Independent technical research on iPhone 14 Pro Dynamic Island identifies **two distinct window scenes**: `SBSystemApertureWindowScene` and `SBSystemApertureCurtainWindowScene`. Source: https://pookjw.github.io/Develop/Aperture_with_Clear_Color/article.html
+- This is a **new competing hypothesis**: the apparent missing segment may involve the curtain/window-scene compositing or masking rather than the container's `frame`. The cited article discusses changing island appearance on iOS 16.0; it does **not** establish that the same mechanism causes RecordingSharingan clipping on iOS 16.5.
+- Therefore read-only diagnostics should also record each candidate view's `window` identity, `windowScene` class, and `layer.mask` presence, in addition to `frame`, `bounds`, and `clipsToBounds`.
+- `DynamicCowTS` manipulates device traits to enable Dynamic Island on other devices, but does not supply verified hooks for this native 14 Pro Max cropping issue. Source: https://github.com/matteozappia/DynamicCowTS
+
+## Revised decision tree
+1. If the visible crop follows an ancestor `clipsToBounds`/mask boundary, instrument that ancestor only.
+2. If it follows a different window-scene curtain/mask, investigate scene composition without changing VC width.
+3. If it follows the physical camera cutout regardless of scene/frame, software can only relocate/scale content, not render through hardware.
+4. No production layout mutation until at least one hypothesis has before/after runtime evidence.
