@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     paths:
+      - '*.zip'
+      - '**/*.zip'
       - 'Makefile'
       - 'Tweak.xm'
       - 'RecordingSharinganPrefs/**'
@@ -15,19 +17,53 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Verify source
+      - name: Locate and extract source ZIP
+        shell: bash
         run: |
-          test -f Makefile && test -f Tweak.xm && test -f control || { echo "::error::Project sources have not been uploaded"; exit 1; }
+          python3 - <<'PY'
+          import os, pathlib, zipfile, shutil
+          root=pathlib.Path.cwd()
+          if (root/'Makefile').is_file() and (root/'Tweak.xm').is_file():
+              project=root
+          else:
+              archives=sorted((p for p in root.rglob('*.zip') if '.git' not in p.parts),key=lambda p:p.stat().st_mtime,reverse=True)
+              if not archives:
+                  raise SystemExit('No source ZIP found. Upload a source ZIP to the repository.')
+              project=None
+              for archive in archives:
+                  dest=root/'_extracted_source'
+                  if dest.exists(): shutil.rmtree(dest)
+                  dest.mkdir()
+                  with zipfile.ZipFile(archive) as z:
+                      for entry in z.infolist():
+                          target=(dest/entry.filename).resolve()
+                          if not target.is_relative_to(dest.resolve()):
+                              raise SystemExit('Unsafe path in ZIP')
+                      z.extractall(dest)
+                  matches=[p.parent for p in dest.rglob('Makefile') if (p.parent/'Tweak.xm').is_file() and (p.parent/'control').is_file()]
+                  if matches:
+                      project=sorted(matches,key=lambda p:len(p.parts))[0]
+                      print('Source archive:',archive)
+                      break
+              if project is None: raise SystemExit('ZIP does not contain Makefile, Tweak.xm and control together.')
+          print('Project directory:',project)
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('PROJECT_DIR='+str(project)+'\n')
+          PY
       - name: Install Theos
+        shell: bash
         run: |
           git clone --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
           brew install ldid xz
       - name: Compile DEB
-        run: make clean package FINALPACKAGE=1
+        shell: bash
+        run: |
+          cd "$PROJECT_DIR"
+          make clean package FINALPACKAGE=1
       - name: Upload DEB
         uses: actions/upload-artifact@v4
         with:
           name: RecordingSharingan-DEB
-          path: packages/*.deb
+          path: '**/packages/*.deb'
           if-no-files-found: error
