@@ -110,6 +110,27 @@ jobs:
           if not patched:
               raise SystemExit('No Preferences framework entry found in Preferences bundle Makefile; refusing unverified patch')
           PY
+      - name: Normalize Preferences Root.plist structure
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os,pathlib,plistlib
+          project=pathlib.Path(os.environ['PROJECT_DIR'])
+          files=list(project.rglob('RecordingSharinganPrefs/Resources/Root.plist'))
+          if len(files)!=1:
+              raise SystemExit(f'Expected one Preferences Root.plist, got {len(files)}')
+          path=files[0]
+          with path.open('rb') as f: data=plistlib.load(f)
+          if isinstance(data,list):
+              if not all(isinstance(item,dict) for item in data):
+                  raise SystemExit('Unexpected Root.plist array contents')
+              with path.open('wb') as f: plistlib.dump({'items':data},f,fmt=plistlib.FMT_XML,sort_keys=False)
+              print('Converted Root.plist array into Preferences items dictionary:',len(data),'items')
+          elif isinstance(data,dict) and isinstance(data.get('items'),list):
+              print('Root.plist already has valid items dictionary')
+          else:
+              raise SystemExit('Unexpected Root.plist root structure')
+          PY
       - name: Compile DEB
         shell: bash
         run: |
