@@ -124,7 +124,11 @@ jobs:
           body={'message':'Update latest RecordingSharingan build status','content':base64.b64encode(report.encode()).decode(),'branch':os.environ['GITHUB_REF_NAME']}
           if existing:body['sha']=existing
           req=urllib.request.Request(url,data=json.dumps(body).encode(),headers={**headers,'Content-Type':'application/json'},method='PUT')
-          with urllib.request.urlopen(req) as resp:print('Published build status:',resp.status)
+          try:
+              with urllib.request.urlopen(req) as resp:print('Published build status:',resp.status)
+          except urllib.error.HTTPError as e:
+              print('WARNING: Cannot update fixed status file:',e.code,e.read().decode(errors='replace')[:1200])
+              print('Status remains available in uploaded diagnostic artifact.')
           PY
       - name: Upload diagnostic logs
         if: always()
@@ -136,7 +140,7 @@ jobs:
             build-status.json
           if-no-files-found: warn
       - name: Upload DEB
-        if: success()
+        if: ${{ always() && hashFiles('**/packages/*.deb') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: RecordingSharingan-DEB
