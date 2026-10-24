@@ -1,8 +1,10 @@
 {
-  "run_id": "40071259599",
-  "run_url": "https://github.com/tu134186/RecordingSharingan-V7/actions/runs/40071259599",
-  "commit": "bc8ca564781f02b2ff04184baef363d5b3dc154b",
+  "run_id": "40071495864",
+  "run_url": "https://github.com/tu134186/RecordingSharingan-V7/actions/runs/40071495864",
+  "commit": "6cd57a2c7a3d3a36903fa16240591d04079a2e9a",
   "result": "failure",
   "deb_files": [],
-  "errors": []
+  "errors": [
+    "make: *** [internal-clean] Error 2"
+  ]
 }
