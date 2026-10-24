@@ -93,13 +93,13 @@ jobs:
           candidates=list(project.rglob('Makefile'))
           patched=0
           for path in candidates:
-              if 'Prefs' not in str(path) and 'prefs' not in str(path): continue
+              if not any('Prefs' in line and ('FRAMEWORKS' in line or 'LIBRARIES' in line) for line in path.read_text().splitlines()): continue
               src=path.read_text()
               lines=src.splitlines(keepends=True)
               result=[]
               for line in lines:
-                  if re.match(r'^\\s*\\w+_FRAMEWORKS\\s*[:+?]?=',line) and re.search(r'\\bPreferences\\b',line):
-                      line=re.sub(r'(?<!\\S)Preferences(?!\\S)','',line)
+                  if re.match(r'^\s*\w+_FRAMEWORKS\s*[:+?]?=',line) and re.search(r'\bPreferences\b',line):
+                      line=re.sub(r'(?<!\S)Preferences(?!\S)','',line)
                       patched+=1
                   result.append(line)
               if patched:
