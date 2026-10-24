@@ -103,8 +103,8 @@ jobs:
                       patched+=1
                   result.append(line)
               if patched:
-                  result.append('\\n# Settings loads Preferences.framework at runtime; no SDK link stub available.\\n')
-                  result.append('ADDITIONAL_LDFLAGS += -Wl,-undefined,dynamic_lookup\\n')
+                  result.append('\n# Settings loads Preferences.framework at runtime; no SDK link stub available.\n')
+                  result.append('ADDITIONAL_LDFLAGS += -Wl,-undefined,dynamic_lookup\n')
                   path.write_text(''.join(result))
                   print('Adjusted Preferences bundle linking:',path)
           if not patched:
