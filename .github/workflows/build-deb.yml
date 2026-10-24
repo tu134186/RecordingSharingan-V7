@@ -1,0 +1,33 @@
+name: Build RecordingSharingan DEB
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'Makefile'
+      - 'Tweak.xm'
+      - 'RecordingSharinganPrefs/**'
+      - 'layout/**'
+      - 'control'
+      - '.github/workflows/build-deb.yml'
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify source
+        run: |
+          test -f Makefile && test -f Tweak.xm && test -f control || { echo "::error::Project sources have not been uploaded"; exit 1; }
+      - name: Install Theos
+        run: |
+          git clone --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
+          echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
+          brew install ldid xz
+      - name: Compile DEB
+        run: make clean package FINALPACKAGE=1
+      - name: Upload DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: RecordingSharingan-DEB
+          path: packages/*.deb
+          if-no-files-found: error
