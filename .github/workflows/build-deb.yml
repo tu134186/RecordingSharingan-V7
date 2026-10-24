@@ -143,6 +143,55 @@ jobs:
               with path.open('wb') as f: plistlib.dump(normalized,f,fmt=plistlib.FMT_XML,sort_keys=False)
           print('Removed navigation arrows from custom slider rows:',changed)
           PY
+      - name: Add read-only VC geometry snapshot (diagnostic branch only)
+        if: ${{ github.ref_name == 'vc-diagnostics' }}
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os,pathlib
+          project=pathlib.Path(os.environ['PROJECT_DIR'])
+          tweak=project/'Tweak.xm'
+          src=tweak.read_text()
+          anchor='static NSTimeInterval RSV79LastApertureProbeLog = 0;'
+          call='    RSV79ProbeApertureView((UIView *)self, @"container layout");'
+          if src.count(anchor)!=1 or src.count(call)!=1: raise SystemExit('Unexpected tweak layout; refuse patch')
+          diag='''
+          // VC-DIAG: read-only ancestor geometry; never mutate layout.
+          static NSTimeInterval RSVCDLastSnapshot = 0;
+          static void RSVCDSnapshot(UIView *view, NSString *event) {
+              if (!view || !RSInitialized || !RSRecordingActive) return;
+              NSTimeInterval now = CACurrentMediaTime();
+              if (now - RSVCDLastSnapshot < 3.0) return;
+              RSVCDLastSnapshot = now;
+              @try {
+                  UIWindow *window = view.window;
+                  id scene = window ? window.windowScene : nil;
+                  RSLog(@"VCD snapshot event=%@ scene=%@ window=%@", event,
+                        scene ? NSStringFromClass([scene class]) : @"nil",
+                        window ? NSStringFromClass([window class]) : @"nil");
+                  UIView *current = view;
+                  for (NSUInteger depth = 0; current && depth < 16; depth++, current = current.superview) {
+                      CGRect inWindow = CGRectNull;
+                      if (window && current.window == window)
+                          inWindow = [current convertRect:current.bounds toView:window];
+                      CALayer *layer = current.layer;
+                      RSLog(@"VCD ancestor=%lu class=%@ ptr=%p frame=%@ bounds=%@ inWindow=%@ clip=%d masks=%d mask=%d hidden=%d alpha=%.3f",
+                            (unsigned long)depth, NSStringFromClass([current class]), current,
+                            NSStringFromCGRect(current.frame), NSStringFromCGRect(current.bounds),
+                            NSStringFromCGRect(inWindow), current.clipsToBounds,
+                            layer.masksToBounds, layer.mask != nil, current.hidden, current.alpha);
+                  }
+              } @catch (NSException *exception) {
+                  RSLog(@"VCD snapshot exception=%@", exception);
+              }
+          }
+
+          '''
+          src=src.replace(anchor,diag+anchor,1)
+          src=src.replace(call,call+'\n    RSVCDSnapshot((UIView *)self, @"container layout");',1)
+          tweak.write_text(src)
+          print('Injected VC read-only geometry diagnostics into extracted source')
+          PY
       - name: Compile DEB
         shell: bash
         run: |
