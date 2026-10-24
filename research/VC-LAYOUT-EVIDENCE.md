@@ -40,3 +40,18 @@ The shared Axs skill archive is general Theos/Logos engineering guidance, not an
 2. If it follows a different window-scene curtain/mask, investigate scene composition without changing VC width.
 3. If it follows the physical camera cutout regardless of scene/frame, software can only relocate/scale content, not render through hardware.
 4. No production layout mutation until at least one hypothesis has before/after runtime evidence.
+
+
+## Source-level audit of the actual V6.5 ZIP (2026-10-24, second pass)
+The source archive `V7.11.9.4.3.2.6.5-RecordingSharingan-Source.zip` is available in the conversation and was inspected directly. This corrects an important planning assumption: **a read-only geometry probe already exists**.
+
+- `Tweak.xm:2796–2816`: `RSV79ProbeApertureView(UIView *, NSString *)` logs class, frame, bounds, screen rectangle, alpha, hidden, superview class, window class, throttled to 120ms while recording. It then calls `RSV711RememberAccessory` (not fully side-effect-free).
+- `Tweak.xm:3011–3038`: existing `SBSystemApertureContainerView` hooks `layoutSubviews`, `didMoveToWindow`, `setFrame:`, and `setBounds:` all invoke the probe.
+- `Tweak.xm:2409–2456`: a deferred container refresh already calls `invalidateCache` if present, `setNeedsLayout`, `layoutIfNeeded`, and then a guarded remount. Any additional probe must not trigger this chain.
+- `Tweak.xm:2797–2815` does **not** log `clipsToBounds`, `layer.masksToBounds`, `layer.mask`, window-scene identity, or ancestor geometry. These are the actual missing measurements.
+
+### New implementation constraint
+Do **not** add another `layoutSubviews` hook or trigger `RSDiscoverAll` in layout callbacks. Prefer extending the existing throttled probe with an independently rate-limited, pure read-only ancestor snapshot; avoid calling `RSV711RememberAccessory` from the new snapshot. Capture two labeled snapshots with a manual marker before/after swipe, otherwise the log cannot reliably identify states.
+
+### Evidence status
+No real device snapshots have yet been collected. No clipping parent or VC selector has been identified. The existing probe means a full new instrumentation subsystem is unnecessary.
