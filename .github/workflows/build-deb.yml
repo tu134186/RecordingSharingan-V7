@@ -61,6 +61,24 @@ jobs:
             cp -R "$RUNNER_TEMP/theos-sdks/"*.sdk "$HOME/theos/sdks/"
           fi
           ls -la "$HOME/theos/sdks"
+      - name: Fix RSRootController specifier mutability in extracted ZIP
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import os,pathlib
+          project=pathlib.Path(os.environ['PROJECT_DIR'])
+          files=list(project.rglob('RSRootController.m'))
+          if len(files)!=1:
+              raise SystemExit(f'Expected one RSRootController.m, found {len(files)}')
+          path=files[0]
+          src=path.read_text()
+          if '_specifiers = loaded;' not in src or '_specifiers = @[error];' not in src:
+              raise SystemExit('Unexpected controller source; refusing blind patch')
+          src=src.replace('_specifiers = loaded;', '_specifiers = [loaded mutableCopy];')
+          src=src.replace('_specifiers = @[error];', '_specifiers = [@[error] mutableCopy];')
+          path.write_text(src)
+          print('Fixed mutable specifier assignments:',path)
+          PY
       - name: Compile DEB
         shell: bash
         run: |
