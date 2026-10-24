@@ -130,6 +130,18 @@ jobs:
               print('Root.plist already has valid items dictionary')
           else:
               raise SystemExit('Unexpected Root.plist root structure')
+          # Custom slider rows are not navigation links. PSLinkCell adds an unwanted disclosure arrow.
+          with path.open('rb') as f: normalized=plistlib.load(f)
+          items=normalized['items']
+          changed=0
+          for item in items:
+              if item.get('cellClass')=='RSAdjustCell' and item.get('cell')=='PSLinkCell':
+                  item['cell']='PSStaticTextCell'
+                  item.pop('detail',None)
+                  changed+=1
+          if changed:
+              with path.open('wb') as f: plistlib.dump(normalized,f,fmt=plistlib.FMT_XML,sort_keys=False)
+          print('Removed navigation arrows from custom slider rows:',changed)
           PY
       - name: Compile DEB
         shell: bash
