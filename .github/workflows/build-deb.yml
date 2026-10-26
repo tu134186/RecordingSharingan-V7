@@ -2,7 +2,7 @@ name: Build RecordingSharingan DEB
 on:
   workflow_dispatch:
   push:
-    branches: [main, 'feature/material-library-v6.17']
+    branches: [main, 'feature/material-library-v6.17', 'feature/island-halo-v6.18']
     paths:
       - '*.zip'
       - '**/*.zip'
@@ -191,6 +191,9 @@ jobs:
       - name: Apply 6.17 thumbnails independent sides and display names
         shell: bash
         run: python3 scripts/apply-v6.17-material-library.py
+      - name: Apply 6.18 whole-island outline
+        shell: bash
+        run: python3 scripts/apply-v6.18-island-halo.py
       - name: Package exact build source
         shell: bash
         run: |
@@ -204,7 +207,7 @@ jobs:
           assert count==1,count
           tweak.write_text(text)
           readme=root/'README.md'
-          readme.write_text('# RecordingSharingan '+version+'\n\nThumbnail gallery; independent left/right materials; display-only renaming; 0.1 increments and existing materials preserved.\nDevice validation pending.\n')
+          readme.write_text('# RecordingSharingan '+version+'\n\nWhole-island halo: color, thickness and glow. Existing materials, independent side choices and 0.1 controls preserved. Experimental device validation pending.\nDevice validation pending.\n')
           info=plistlib.loads((root/'RecordingSharinganPrefs/Resources/Info.plist').read_bytes())
           assert info['CFBundleVersion']==version
           assert info['CFBundleShortVersionString']==version
