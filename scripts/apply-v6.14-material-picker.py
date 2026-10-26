@@ -19,7 +19,7 @@ s=s.replace('@interface RSRootController : PSListController','@interface RSRootC
 p.write_text(s)
 p=root/"RecordingSharinganPrefs/RSRootController.m";s=p.read_text()
 assert '#import "RSRootController.h"' in s
-s=s.replace('#import "RSRootController.h"','#import "RSRootController.h"\n#import <UIKit/UIKit.h>\n#import <string.h>\n')
+s=s.replace('#import "RSRootController.h"','#import "RSRootController.h"\n#import <UIKit/UIKit.h>\n#import <string.h>\n#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>\n')
 s=s.replace('@implementation RSRootController','''@interface RSRootController ()
 @property(nonatomic,assign) NSInteger rsImportSlot;
 @end
@@ -39,7 +39,7 @@ s=s.replace('@implementation RSRootController','''@interface RSRootController ()
   NSInteger slot=i;
   [a addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"素材 %ld",(long)i] style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
    self.rsImportSlot=slot;
-   UIDocumentPickerViewController *picker=[[UIDocumentPickerViewController alloc] initWithDocumentTypes:@[@"public.png"] inMode:UIDocumentPickerModeImport];
+   UIDocumentPickerViewController *picker=[[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypePNG] asCopy:YES];
    picker.delegate=self;picker.allowsMultipleSelection=NO;
    [self presentViewController:picker animated:YES completion:nil];
   }]];
