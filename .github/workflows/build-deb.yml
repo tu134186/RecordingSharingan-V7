@@ -77,7 +77,7 @@ jobs:
       - name: Validate material import patch syntax
         shell: bash
         run: python3 -m py_compile scripts/apply-v6.14-material-picker.py
-      - name: Apply V6.14 PNG material import and live refresh
+      - name: Apply V6.15 independent material library
         shell: bash
         run: python3 scripts/apply-v6.14-material-picker.py
       - name: Install Theos
@@ -181,7 +181,7 @@ jobs:
           assert count==1,count
           tweak.write_text(text)
           readme=root/'README.md'
-          readme.write_text('# RecordingSharingan '+version+'\\n\\nDefault PreferenceLoader icon; native Settings typography; compact sliders; PNG material import.\\nDevice validation pending.\\n')
+          readme.write_text('# RecordingSharingan '+version+'\n\nIndependent custom PNG library: import multiple, select, delete; bundled materials preserved.\nDevice validation pending.\n')
           info=plistlib.loads((root/'RecordingSharinganPrefs/Resources/Info.plist').read_bytes())
           assert info['CFBundleVersion']==version
           assert info['CFBundleShortVersionString']==version

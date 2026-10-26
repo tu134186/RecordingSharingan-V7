@@ -1,104 +1,43 @@
 import os,pathlib,plistlib
 root=pathlib.Path(os.environ["PROJECT_DIR"])
-old="7.11.9.4.3.2.6.13"; new="7.11.9.4.3.2.6.14"
+old="7.11.9.4.3.2.6.13"; new="7.11.9.4.3.2.6.15"
 for name in ("control","VERSION.txt"):
  p=root/name;s=p.read_text();assert old in s,(name,old);p.write_text(s.replace(old,new))
 p=root/"RecordingSharinganPrefs/Resources/Info.plist"
 d=plistlib.loads(p.read_bytes());d["CFBundleVersion"]=new;d["CFBundleShortVersionString"]=new;p.write_bytes(plistlib.dumps(d,fmt=plistlib.FMT_XML,sort_keys=False))
-# Keep original bundled PNGs immutable; imported overrides live in mobile-writable storage.
-p=root/"Tweak.xm";s=p.read_text()
-needle='    for (NSString *base in bases) {\n        NSString *p = [base stringByAppendingPathComponent:name];'
-assert needle in s
-s=s.replace(needle,'''    NSString *custom = [@"/var/mobile/Library/Preferences/RecordingSharinganAssets" stringByAppendingPathComponent:name];
-    if ([[NSFileManager defaultManager] fileExistsAtPath:custom]) return custom;
-'''+needle,1)
+# Only style 3 uses user storage; built-in paths always remain immutable.
+p=root/'Tweak.xm';s=p.read_text()
+assert 'return (style == 2) ? 2 : 1;' in s
+s=s.replace('return (style == 2) ? 2 : 1;', 'return (style == 2 || style == 3) ? style : 1;')
+needle='    NSInteger style = RSEyeStyle();\n'
+assert s.count(needle)==1
+s=s.replace(needle,needle+'''    if (style == 3) {
+        CFPropertyListRef value = RSCopyPreference(CFSTR("customAssetName"));
+        NSString *name = (value && CFGetTypeID(value)==CFStringGetTypeID()) ? [(__bridge NSString *)value copy] : nil;
+        if (value) CFRelease(value);
+        if ([name hasPrefix:@"custom-"] && [name isEqualToString:name.lastPathComponent] && [name.pathExtension.lowercaseString isEqualToString:@"png"]) {
+            NSString *custom = [@"/var/mobile/Library/Preferences/RecordingSharinganAssets" stringByAppendingPathComponent:name];
+            if ([UIImage imageWithContentsOfFile:custom]) return custom;
+        }
+        // Missing custom files fall back to the bundled first material.
+        style = 1;
+    }
+''')
+s=s.replace('            BOOL enabled = RSIsEnabled();','            CFPreferencesAppSynchronize(RSPrefsDomain);\n            BOOL enabled = RSIsEnabled();')
 p.write_text(s)
-p=root/"RecordingSharinganPrefs/RSRootController.h";s=p.read_text()
+p=root/'RecordingSharinganPrefs/RSRootController.h';s=p.read_text()
 s=s.replace('#import <Preferences/PSListController.h>','#import <Preferences/PSListController.h>\n#import <UIKit/UIKit.h>')
 s=s.replace('@interface RSRootController : PSListController','@interface RSRootController : PSListController <UIDocumentPickerDelegate>')
 p.write_text(s)
-p=root/"RecordingSharinganPrefs/RSRootController.m";s=p.read_text()
-assert '#import "RSRootController.h"' in s
-s=s.replace('#import "RSRootController.h"','#import "RSRootController.h"\n#import <UIKit/UIKit.h>\n#import <string.h>\n#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>\n')
-s=s.replace('@implementation RSRootController','''@interface RSRootController ()
-@property(nonatomic,assign) NSInteger rsImportSlot;
-@end
-@implementation RSRootController
-- (void)rsAlert:(NSString *)message {
- UIAlertController *a=[UIAlertController alertControllerWithTitle:@"写轮眼素材" message:message preferredStyle:UIAlertControllerStyleAlert];
- [a addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:nil]];
- [self presentViewController:a animated:YES completion:nil];
-}
-- (void)rsNotify {
- CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),CFSTR("com.tu.recordingsharingan.settings.changed"),NULL,NULL,YES);
-}
-- (NSString *)rsAssetDirectory { return @"/var/mobile/Library/Preferences/RecordingSharinganAssets"; }
-- (void)rsChooseFile {
- UIAlertController *a=[UIAlertController alertControllerWithTitle:@"替换素材" message:@"选择要替换的素材位置" preferredStyle:UIAlertControllerStyleActionSheet];
- for (NSInteger i=1;i<=2;i++) {
-  NSInteger slot=i;
-  [a addAction:[UIAlertAction actionWithTitle:[NSString stringWithFormat:@"素材 %ld",(long)i] style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
-   self.rsImportSlot=slot;
-   UIDocumentPickerViewController *picker=[[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypePNG] asCopy:YES];
-   picker.delegate=self;picker.allowsMultipleSelection=NO;
-   [self presentViewController:picker animated:YES completion:nil];
-  }]];
- }
- [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
- UIPopoverPresentationController *pop=a.popoverPresentationController;
- if(pop){pop.sourceView=self.view;pop.sourceRect=CGRectMake(CGRectGetMidX(self.view.bounds),CGRectGetMidY(self.view.bounds),1,1);}
- [self presentViewController:a animated:YES completion:nil];
-}
-- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
- NSURL *url=urls.firstObject;
- if(!url || self.rsImportSlot<1 || self.rsImportSlot>2)return;
- BOOL scoped=[url startAccessingSecurityScopedResource];
- __block NSError *readError=nil;
- __block NSData *data=nil;
- NSFileCoordinator *coordinator=[[NSFileCoordinator alloc] initWithFilePresenter:nil];
- [coordinator coordinateReadingItemAtURL:url options:0 error:&readError byAccessor:^(NSURL *safeURL) {
-  data=[NSData dataWithContentsOfURL:safeURL options:0 error:&readError];
- }];
- if(scoped)[url stopAccessingSecurityScopedResource];
- if(readError || data.length<24 || data.length>20*1024*1024){[self rsAlert:@"读取失败或文件超过 20MB，原素材未改变。"];return;}
- const unsigned char *bytes=data.bytes;
- const unsigned char png[8]={137,80,78,71,13,10,26,10};
- if(memcmp(bytes,png,8)!=0 || ![UIImage imageWithData:data]){[self rsAlert:@"请选择有效的 PNG 图片，原素材未改变。"];return;}
- NSString *dir=[self rsAssetDirectory];
- NSError *error=nil;
- if(![[NSFileManager defaultManager] createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:nil error:&error]){
-  [self rsAlert:[NSString stringWithFormat:@"无法创建素材目录：%@",error.localizedDescription?:@"权限不足"]];return;
- }
- NSString *name=[NSString stringWithFormat:@"replay%ld.png",(long)self.rsImportSlot];
- NSString *target=[dir stringByAppendingPathComponent:name];
- if(![data writeToFile:target options:NSDataWritingAtomic error:&error]){
-  [self rsAlert:[NSString stringWithFormat:@"保存失败：%@",error.localizedDescription?:@"权限不足"]];return;
- }
- [self rsNotify];
- [self rsAlert:[NSString stringWithFormat:@"素材 %ld 已导入。录屏中将尝试立即刷新，未录屏则下次显示。",(long)self.rsImportSlot]];
-}
-- (void)rsRestoreMaterial {
- UIAlertController *a=[UIAlertController alertControllerWithTitle:@"恢复内置素材" message:@"删除导入的图片，恢复两款内置素材？" preferredStyle:UIAlertControllerStyleAlert];
- [a addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
- [a addAction:[UIAlertAction actionWithTitle:@"恢复" style:UIAlertActionStyleDestructive handler:^(__unused UIAlertAction *action) {
-  NSFileManager *fm=[NSFileManager defaultManager];NSString *dir=[self rsAssetDirectory];
-  NSError *err=nil;
-  for(NSInteger i=1;i<=2;i++){
-   NSString *p=[dir stringByAppendingPathComponent:[NSString stringWithFormat:@"replay%ld.png",(long)i]];
-   if([fm fileExistsAtPath:p] && ![fm removeItemAtPath:p error:&err])break;
-  }
-  if(err)[self rsAlert:[NSString stringWithFormat:@"恢复失败：%@",err.localizedDescription]];
-  else {[self rsNotify];[self rsAlert:@"已恢复内置素材。"];}
- }]];
- [self presentViewController:a animated:YES completion:nil];
-}
-''',1)
+p=root/'RecordingSharinganPrefs/RSRootController.m';s=p.read_text()
+helpers='#import <UIKit/UIKit.h>\n#import <CoreFoundation/CoreFoundation.h>\n#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>\n#import <ImageIO/ImageIO.h>\n#import <string.h>\n\nstatic NSString * const RSMaterialDomain = @"com.tu.recordingsharingan.settings";\nstatic NSString *RSMaterialDirectory(void) { return @"/var/mobile/Library/Preferences/RecordingSharinganAssets"; }\nstatic void RSMaterialNotify(void) {\n CFNotificationCenterPostNotification(CFNotificationCenterGetDarwinNotifyCenter(),CFSTR("com.tu.recordingsharingan.settings.changed"),NULL,NULL,YES);\n}\nstatic NSInteger RSMaterialStyle(void) {\n CFPreferencesAppSynchronize((__bridge CFStringRef)RSMaterialDomain);\n id value=CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("eyeStyle"),(__bridge CFStringRef)RSMaterialDomain));\n return value ? [value integerValue] : 1;\n}\nstatic NSString *RSMaterialSelectedName(void) {\n id value=CFBridgingRelease(CFPreferencesCopyAppValue(CFSTR("customAssetName"),(__bridge CFStringRef)RSMaterialDomain));\n return [value isKindOfClass:NSString.class] ? value : @"";\n}\nstatic BOOL RSMaterialSelect(NSInteger style, NSString *name) {\n CFPreferencesSetAppValue(CFSTR("eyeStyle"),(__bridge CFPropertyListRef)@(style),(__bridge CFStringRef)RSMaterialDomain);\n CFPreferencesSetAppValue(CFSTR("customAssetName"),name ? (__bridge CFPropertyListRef)name : NULL,(__bridge CFStringRef)RSMaterialDomain);\n BOOL saved=CFPreferencesAppSynchronize((__bridge CFStringRef)RSMaterialDomain);\n if(saved) RSMaterialNotify();\n return saved;\n}\nstatic NSArray<NSString *> *RSMaterialFiles(void) {\n NSArray *all=[[NSFileManager defaultManager] contentsOfDirectoryAtPath:RSMaterialDirectory() error:NULL];\n NSMutableArray *files=[NSMutableArray array];\n for(NSString *name in all) if([name hasPrefix:@"custom-"] && [name.pathExtension.lowercaseString isEqualToString:@"png"] && [name containsString:@"--"]) [files addObject:name];\n return [files sortedArrayUsingSelector:@selector(localizedStandardCompare:)];\n}\nstatic NSString *RSMaterialTitle(NSString *name) {\n NSRange r=[name rangeOfString:@"--"];\n return r.location==NSNotFound ? name : [name substringFromIndex:NSMaxRange(r)];\n}\nstatic void RSMaterialAlert(UIViewController *vc,NSString *message) {\n UIAlertController *a=[UIAlertController alertControllerWithTitle:@"素材" message:message preferredStyle:UIAlertControllerStyleAlert];\n [a addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:nil]];\n [vc presentViewController:a animated:YES completion:nil];\n}\n\n@interface RSMaterialListController : UITableViewController\n@property(nonatomic,strong) NSArray<NSString *> *files;\n@end\n@implementation RSMaterialListController\n- (void)viewDidLoad {\n [super viewDidLoad];self.title=@"选择素材";\n self.navigationItem.rightBarButtonItem=self.editButtonItem;\n self.tableView.rowHeight=60;\n}\n- (void)viewWillAppear:(BOOL)animated {\n [super viewWillAppear:animated];self.files=RSMaterialFiles();[self.tableView reloadData];\n}\n- (NSInteger)numberOfSectionsInTableView:(UITableView *)tableView { return 2; }\n- (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section { return section==0 ? 2 : self.files.count; }\n- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section { return section==0 ? @"内置素材" : @"自定义素材"; }\n- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {\n return section==1 ? (self.files.count ? @"点击切换素材，左滑或点编辑可删除。" : @"返回上一页，点击“导入素材”添加 PNG 图片。") : nil;\n}\n- (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {\n UITableViewCell *cell=[[UITableViewCell alloc] initWithStyle:UITableViewCellStyleDefault reuseIdentifier:nil];\n NSInteger style=RSMaterialStyle();NSString *selected=RSMaterialSelectedName();\n if(indexPath.section==0) {\n  cell.textLabel.text=[NSString stringWithFormat:@"素材 %ld",(long)indexPath.row+1];\n  cell.accessoryType=style==indexPath.row+1 ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;\n } else {\n  NSString *name=self.files[indexPath.row];cell.textLabel.text=RSMaterialTitle(name);\n  cell.accessoryType=style==3 && [selected isEqualToString:name] ? UITableViewCellAccessoryCheckmark : UITableViewCellAccessoryNone;\n }\n cell.textLabel.font=[UIFont preferredFontForTextStyle:UIFontTextStyleBody];\n return cell;\n}\n- (void)tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {\n [tableView deselectRowAtIndexPath:indexPath animated:YES];\n NSString *name=indexPath.section==1 ? self.files[indexPath.row] : nil;\n if(name && ![UIImage imageWithContentsOfFile:[RSMaterialDirectory() stringByAppendingPathComponent:name]]) {\n  RSMaterialAlert(self,@"素材已丢失或损坏，请重新导入。");return;\n }\n if(!RSMaterialSelect(indexPath.section==0 ? indexPath.row+1 : 3,name)) RSMaterialAlert(self,@"无法保存选择，请重试。");\n [tableView reloadData];\n}\n- (BOOL)tableView:(UITableView *)tableView canEditRowAtIndexPath:(NSIndexPath *)indexPath { return indexPath.section==1; }\n- (void)tableView:(UITableView *)tableView commitEditingStyle:(UITableViewCellEditingStyle)editingStyle forRowAtIndexPath:(NSIndexPath *)indexPath {\n if(editingStyle!=UITableViewCellEditingStyleDelete || indexPath.section!=1)return;\n NSString *name=self.files[indexPath.row];\n BOOL active=RSMaterialStyle()==3 && [RSMaterialSelectedName() isEqualToString:name];\n if(active && !RSMaterialSelect(1,nil)){RSMaterialAlert(self,@"无法切回内置素材，未删除图片。");return;}\n NSError *error=nil;\n if(![[NSFileManager defaultManager] removeItemAtPath:[RSMaterialDirectory() stringByAppendingPathComponent:name] error:&error]) {\n  if(active)RSMaterialSelect(3,name);\n  RSMaterialAlert(self,error.localizedDescription ?: @"删除失败。");return;\n }\n self.files=RSMaterialFiles();[tableView reloadData];\n}\n@end\n\n'
+methods='- (void)rsManageMaterials {\n RSMaterialListController *list=[[RSMaterialListController alloc] initWithStyle:UITableViewStyleInsetGrouped];\n [self.navigationController pushViewController:list animated:YES];\n}\n- (void)rsChooseFile {\n UIDocumentPickerViewController *picker=[[UIDocumentPickerViewController alloc] initForOpeningContentTypes:@[UTTypePNG] asCopy:YES];\n picker.delegate=self;picker.allowsMultipleSelection=YES;\n [self presentViewController:picker animated:YES completion:nil];\n}\n- (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {\n NSMutableArray<NSString *> *imported=[NSMutableArray array];\n NSMutableArray<NSString *> *failures=[NSMutableArray array];\n NSFileManager *fm=[NSFileManager defaultManager];NSString *dir=RSMaterialDirectory();\n NSError *directoryError=nil;\n BOOL ready=[fm createDirectoryAtPath:dir withIntermediateDirectories:YES attributes:@{NSFilePosixPermissions:@0755} error:&directoryError];\n if(ready)[fm setAttributes:@{NSFilePosixPermissions:@0755} ofItemAtPath:dir error:NULL];\n for(NSURL *url in urls) {\n  if(!ready){[failures addObject:directoryError.localizedDescription ?: @"无法创建素材目录"];break;}\n  BOOL scoped=[url startAccessingSecurityScopedResource];\n  __block NSData *data=nil;__block NSError *readError=nil;\n  NSFileCoordinator *coordinator=[[NSFileCoordinator alloc] initWithFilePresenter:nil];\n  [coordinator coordinateReadingItemAtURL:url options:0 error:&readError byAccessor:^(NSURL *safeURL) {\n   NSNumber *size=nil;[safeURL getResourceValue:&size forKey:NSURLFileSizeKey error:NULL];\n   if(size && size.unsignedLongLongValue>20*1024*1024)return;\n   data=[NSData dataWithContentsOfURL:safeURL options:NSDataReadingMappedIfSafe error:&readError];\n  }];\n  if(scoped)[url stopAccessingSecurityScopedResource];\n  const unsigned char png[8]={137,80,78,71,13,10,26,10};\n  BOOL valid=!readError && data.length>=24 && data.length<=20*1024*1024 && memcmp(data.bytes,png,8)==0;\n  CGImageSourceRef source=valid ? CGImageSourceCreateWithData((__bridge CFDataRef)data,NULL) : NULL;\n  NSDictionary *properties=source ? CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(source,0,NULL)) : nil;\n  NSUInteger width=[properties[(__bridge NSString *)kCGImagePropertyPixelWidth] unsignedIntegerValue];\n  NSUInteger height=[properties[(__bridge NSString *)kCGImagePropertyPixelHeight] unsignedIntegerValue];\n  valid=valid && width>0 && height>0 && width<=4096 && height<=4096;\n  UIImage *image=valid ? [UIImage imageWithData:data] : nil;\n  if(source)CFRelease(source);\n  if(!image){[failures addObject:[NSString stringWithFormat:@"%@：请选择 20MB 以内、4096×4096 以内的有效 PNG。",url.lastPathComponent]];continue;}\n  NSString *name=[NSString stringWithFormat:@"custom-%@--%@",NSUUID.UUID.UUIDString,url.lastPathComponent];\n  NSString *target=[dir stringByAppendingPathComponent:name];NSError *writeError=nil;\n  if(![data writeToFile:target options:NSDataWritingAtomic error:&writeError]) {\n   [failures addObject:writeError.localizedDescription ?: @"保存失败"];continue;\n  }\n  if(![fm setAttributes:@{NSFilePosixPermissions:@0644,NSFileProtectionKey:NSFileProtectionNone} ofItemAtPath:target error:&writeError]) {\n   [fm removeItemAtPath:target error:NULL];[failures addObject:writeError.localizedDescription ?: @"无法设置读取权限"];continue;\n  }\n  [imported addObject:name];\n }\n BOOL selected=imported.count ? RSMaterialSelect(3,imported.lastObject) : NO;\n NSString *message=imported.count ? [NSString stringWithFormat:@"已添加 %lu 张素材。%@",(unsigned long)imported.count,selected ? @"已选用最后一张，可在“选择素材”中切换或删除。" : @"自动选用失败，请到“选择素材”手动选用。"] : @"未导入素材，原来的选择和图片已保留。";\n if(failures.count)message=[message stringByAppendingFormat:@"\\n%@",[failures componentsJoinedByString:@"\\n"]];\n [controller dismissViewControllerAnimated:YES completion:^{ RSMaterialAlert(self,message); }];\n}\n'
+s=s.replace('@implementation RSRootController',helpers+'\n@implementation RSRootController\n'+methods,1)
 p.write_text(s)
-p=root/"RecordingSharinganPrefs/Resources/Root.plist";d=plistlib.loads(p.read_bytes());items=d["items"] if isinstance(d,dict) else d
-idx=next(i for i,x in enumerate(items) if x.get("key")=="eyeStyle")
-items[idx+1:idx+1]=[
- {"cell":"PSButtonCell","label":"选择文件 · 替换素材","action":"rsChooseFile"},
- {"cell":"PSButtonCell","label":"恢复内置素材","action":"rsRestoreMaterial"}
-]
+p=root/'RecordingSharinganPrefs/Makefile';s=p.read_text();s=s.replace('include $(THEOS_MAKE_PATH)/bundle.mk','RecordingSharinganPrefs_FRAMEWORKS += UniformTypeIdentifiers ImageIO\ninclude $(THEOS_MAKE_PATH)/bundle.mk');p.write_text(s)
+p=root/'RecordingSharinganPrefs/Resources/Root.plist';d=plistlib.loads(p.read_bytes());items=d['items'] if isinstance(d,dict) else d
+idx=next(i for i,x in enumerate(items) if x.get('key')=='eyeStyle')
+items[idx]={'cell':'PSButtonCell','label':'选择素材','action':'rsManageMaterials'}
+items.insert(idx+1,{'cell':'PSButtonCell','label':'导入素材','action':'rsChooseFile'})
 p.write_bytes(plistlib.dumps(d,fmt=plistlib.FMT_XML,sort_keys=False))
-print("Material picker and override paths applied:",new)
+print('Independent multi-material import, selection and deletion applied:',new)
