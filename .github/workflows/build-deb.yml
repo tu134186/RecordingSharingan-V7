@@ -93,7 +93,7 @@ jobs:
           p.write_text(t)
           p=root/'layout/Library/PreferenceLoader/Preferences/RecordingSharingan.plist'
           d=plistlib.loads(p.read_bytes())
-          entries=d if isinstance(d,list) else [d]
+          entries=d if isinstance(d,list) else [d['entry']]
           assert len(entries)==1 and entries[0].get('icon')=='/var/jb/Library/PreferenceLoader/Preferences/RecordingSharingan.png'
           entries[0]['icon']='RecordingSharingan.png'
           assert (root/'layout/Library/PreferenceLoader/Preferences/RecordingSharingan.png').is_file()
