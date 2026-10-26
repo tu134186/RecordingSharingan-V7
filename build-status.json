@@ -1,8 +1,16 @@
 {
-  "run_id": "40317149111",
-  "run_url": "https://github.com/tu134186/RecordingSharingan-V7/actions/runs/40317149111",
-  "commit": "6ac56d2cd6f235a04087cbb22ed2e23665058293",
+  "run_id": "40317283573",
+  "run_url": "https://github.com/tu134186/RecordingSharingan-V7/actions/runs/40317283573",
+  "commit": "04a69ce19fd5cadb0141f47324b4c6995de1bd6e",
   "result": "failure",
   "deb_files": [],
-  "errors": []
+  "errors": [
+    "RSRootController.m:28:129: error: 'UIDocumentPickerModeImport' is deprecated: first deprecated in iOS 14.0 - Use appropriate initializers instead [-Werror,-Wdeprecated-declarations]",
+    "RSRootController.m:28:83: error: 'initWithDocumentTypes:inMode:' is deprecated: first deprecated in iOS 14.0 [-Werror,-Wdeprecated-declarations]",
+    "make[4]: *** [/Users/runner/work/RecordingSharingan-V7/RecordingSharingan-V7/_extracted_source/.theos/obj/arm64/RSRootController.m.850246f4.o] Error 1",
+    "make[3]: *** [/Users/runner/work/RecordingSharingan-V7/RecordingSharingan-V7/_extracted_source/.theos/obj/arm64/RecordingSharinganPrefs.bundle/RecordingSharinganPrefs] Error 2",
+    "make[2]: *** [internal-bundle-all_] Error 2",
+    "make[1]: *** [RecordingSharinganPrefs.all.bundle.variables] Error 2",
+    "make: *** [internal-all] Error 2"
+  ]
 }
