@@ -85,7 +85,7 @@ jobs:
         run: |
           git clone --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
-          brew install ldid xz
+          brew install ldid xz dpkg
           if ! find "$HOME/theos/sdks" -maxdepth 1 -name "*.sdk" -type d | grep -q .; then
             git clone --depth 1 https://github.com/theos/sdks.git "$RUNNER_TEMP/theos-sdks"
             cp -R "$RUNNER_TEMP/theos-sdks/"*.sdk "$HOME/theos/sdks/"
