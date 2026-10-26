@@ -80,12 +80,6 @@ jobs:
       - name: Apply V6.14 PNG material import and live refresh
         shell: bash
         run: python3 scripts/apply-v6.14-material-picker.py
-      - name: Upload V6.14 modified source ZIP
-        uses: actions/upload-artifact@v4
-        with:
-          name: RecordingSharingan-Source-V7.11.9.4.3.2.6.14
-          path: ${{ env.PROJECT_DIR }}
-          if-no-files-found: error
       - name: Install Theos
         shell: bash
         run: |
@@ -174,6 +168,35 @@ jobs:
               with path.open('wb') as f: plistlib.dump(normalized,f,fmt=plistlib.FMT_XML,sort_keys=False)
           print('Removed navigation arrows from custom slider rows:',changed)
           PY
+      - name: Package exact build source
+        shell: bash
+        run: |
+          python3 - <<'PY_SOURCE'
+          import os,pathlib,zipfile,plistlib
+          root=pathlib.Path(os.environ['PROJECT_DIR'])
+          version=next(line.split(':',1)[1].strip() for line in (root/'control').read_text().splitlines() if line.startswith('Version:'))
+          info=plistlib.loads((root/'RecordingSharinganPrefs/Resources/Info.plist').read_bytes())
+          assert info['CFBundleVersion']==version
+          assert info['CFBundleShortVersionString']==version
+          out=pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'_delivery'
+          out.mkdir(exist_ok=True)
+          archive=out/(version+'-RecordingSharingan-source.zip')
+          with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
+              for p in sorted(root.rglob('*')):
+                  if p.is_file() and not any(x in p.relative_to(root).parts for x in ('.git','.theos','packages')):
+                      z.write(p,p.relative_to(root))
+          with zipfile.ZipFile(archive) as z:
+              assert z.testzip() is None
+              assert all(n in z.namelist() for n in ['Makefile','Tweak.xm','control'])
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('DELIVERY_VERSION='+version+'\n')
+          print('Verified complete build source:',archive,archive.stat().st_size)
+          PY_SOURCE
+      - name: Upload exact build source
+        uses: actions/upload-artifact@v4
+        with:
+          name: RecordingSharingan-Source
+          path: _delivery/*-source.zip
+          if-no-files-found: error
       - name: Compile DEB
         shell: bash
         run: |
@@ -243,3 +266,25 @@ jobs:
           name: RecordingSharingan-DEB
           path: _delivery_deb/*.deb
           if-no-files-found: error
+      - name: Verify DEB and publish downloadable delivery
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY_VERIFY'
+          import os,pathlib,subprocess,shutil,hashlib
+          root=pathlib.Path(os.environ['PROJECT_DIR'])
+          packages=list((root/'packages').glob('*.deb'))
+          assert len(packages)==1,packages
+          p=packages[0]
+          version=subprocess.check_output(['dpkg-deb','-f',str(p),'Version'],text=True).strip()
+          assert version==os.environ['DELIVERY_VERSION'],(version,os.environ['DELIVERY_VERSION'])
+          listing=subprocess.check_output(['dpkg-deb','-c',str(p)],text=True)
+          assert 'RecordingSharingan.dylib' in listing
+          assert 'RecordingSharinganPrefs.bundle' in listing
+          dest=pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'_delivery'
+          shutil.copy2(p,dest/(version+'-RecordingSharingan.deb'))
+          files=sorted(dest.iterdir())
+          (dest/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in files))
+          PY_VERIFY
+          gh release create "delivery-${DELIVERY_VERSION}-${GITHUB_RUN_ID}" _delivery/* --target "$GITHUB_SHA" --title "RecordingSharingan ${DELIVERY_VERSION}" --notes "Verified DEB and exact build source. Run: ${GITHUB_RUN_ID}; commit: ${GITHUB_SHA}. Device testing pending."
