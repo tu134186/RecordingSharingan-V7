@@ -67,10 +67,13 @@ jobs:
       - name: Rebuild V6.11 icon from original source
         shell: bash
         run: python3 scripts/apply-v6.11-icon.py
-      - name: Upload V6.11 modified source ZIP
+      - name: Restore PreferenceLoader default wrench icon
+        shell: bash
+        run: python3 scripts/apply-v6.12-default-icon.py
+      - name: Upload V6.12 modified source ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: RecordingSharingan-Source-V7.11.9.4.3.2.6.11
+          name: RecordingSharingan-Source-V7.11.9.4.3.2.6.12
           path: ${{ env.PROJECT_DIR }}
           if-no-files-found: error
       - name: Install Theos
