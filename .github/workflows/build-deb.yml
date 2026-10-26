@@ -70,10 +70,13 @@ jobs:
       - name: Restore PreferenceLoader default wrench icon
         shell: bash
         run: python3 scripts/apply-v6.12-default-icon.py
-      - name: Upload V6.12 modified source ZIP
+      - name: Apply native Settings typography and compact slider spacing
+        shell: bash
+        run: python3 scripts/apply-v6.13-native-layout.py
+      - name: Upload V6.13 modified source ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: RecordingSharingan-Source-V7.11.9.4.3.2.6.12
+          name: RecordingSharingan-Source-V7.11.9.4.3.2.6.13
           path: ${{ env.PROJECT_DIR }}
           if-no-files-found: error
       - name: Install Theos
