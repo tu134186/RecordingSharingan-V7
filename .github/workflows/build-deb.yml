@@ -58,10 +58,13 @@ jobs:
       - name: Apply V7.11.9.4.3.2.6.8 compact Settings and smaller icon
         shell: bash
         run: python3 scripts/apply-v6.7-preferences.py
-      - name: Upload V6.8 modified source ZIP
+      - name: Apply V6.9 labels and icon alignment metadata
+        shell: bash
+        run: python3 scripts/apply-v6.9-settings.py
+      - name: Upload V6.9 modified source ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: RecordingSharingan-Source-V7.11.9.4.3.2.6.8
+          name: RecordingSharingan-Source-V7.11.9.4.3.2.6.9
           path: ${{ env.PROJECT_DIR }}
           if-no-files-found: error
       - name: Install Theos
