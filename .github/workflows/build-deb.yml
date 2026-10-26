@@ -168,6 +168,26 @@ jobs:
               with path.open('wb') as f: plistlib.dump(normalized,f,fmt=plistlib.FMT_XML,sort_keys=False)
           print('Removed navigation arrows from custom slider rows:',changed)
           PY
+      - name: Apply 0.1 adjustment increments and release version
+        shell: bash
+        run: |
+          python3 - <<'PY_STEP'
+          import os,pathlib,plistlib
+          root=pathlib.Path(os.environ['PROJECT_DIR'])
+          p=root/'RecordingSharinganPrefs/RSAdjustCell.m'
+          s=p.read_text()
+          assert '[self adjust:-0.5f]' in s and '[self adjust:0.5f]' in s
+          assert 'roundf((self.slider.value+d)*2)/2' in s
+          s=s.replace('[self adjust:-0.5f]','[self adjust:-0.1f]').replace('[self adjust:0.5f]','[self adjust:0.1f]').replace('roundf((self.slider.value+d)*2)/2','roundf((self.slider.value+d)*10.0f)/10.0f')
+          p.write_text(s)
+          old='7.11.9.4.3.2.6.15';new='7.11.9.4.3.2.6.16'
+          for name in ('control','VERSION.txt'):
+              p=root/name;s=p.read_text();assert old in s;p.write_text(s.replace(old,new))
+          p=root/'RecordingSharinganPrefs/Resources/Info.plist'
+          d=plistlib.loads(p.read_bytes());d['CFBundleVersion']=new;d['CFBundleShortVersionString']=new
+          p.write_bytes(plistlib.dumps(d,fmt=plistlib.FMT_XML,sort_keys=False))
+          print('All +/- controls now use 0.1 with matching decimal rounding')
+          PY_STEP
       - name: Package exact build source
         shell: bash
         run: |
@@ -181,7 +201,7 @@ jobs:
           assert count==1,count
           tweak.write_text(text)
           readme=root/'README.md'
-          readme.write_text('# RecordingSharingan '+version+'\n\nIndependent custom PNG library: import multiple, select, delete; bundled materials preserved.\nDevice validation pending.\n')
+          readme.write_text('# RecordingSharingan '+version+'\n\nAdjustment buttons use 0.1 increments; independent custom PNG library preserved.\nDevice validation pending.\n')
           info=plistlib.loads((root/'RecordingSharinganPrefs/Resources/Info.plist').read_bytes())
           assert info['CFBundleVersion']==version
           assert info['CFBundleShortVersionString']==version
