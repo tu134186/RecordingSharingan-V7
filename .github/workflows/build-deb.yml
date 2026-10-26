@@ -229,10 +229,17 @@ jobs:
             build-output.log
             build-status.json
           if-no-files-found: warn
+      - name: Prepare flat DEB artifact
+        if: ${{ always() && hashFiles('**/packages/*.deb') != '' }}
+        shell: bash
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/_delivery_deb"
+          find "$PROJECT_DIR/packages" -maxdepth 1 -type f -name '*.deb' -exec cp {} "$GITHUB_WORKSPACE/_delivery_deb/" \;
+          ls -lah "$GITHUB_WORKSPACE/_delivery_deb"
       - name: Upload DEB
         if: ${{ always() && hashFiles('**/packages/*.deb') != '' }}
         uses: actions/upload-artifact@v4
         with:
           name: RecordingSharingan-DEB
-          path: '**/packages/*.deb'
+          path: _delivery_deb/*.deb
           if-no-files-found: error
