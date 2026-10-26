@@ -64,10 +64,13 @@ jobs:
       - name: Apply V6.10 compact alignment and icon canvas
         shell: bash
         run: python3 scripts/apply-v6.10-settings.py
-      - name: Upload V6.10 modified source ZIP
+      - name: Rebuild V6.11 icon from original source
+        shell: bash
+        run: python3 scripts/apply-v6.11-icon.py
+      - name: Upload V6.11 modified source ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: RecordingSharingan-Source-V7.11.9.4.3.2.6.10
+          name: RecordingSharingan-Source-V7.11.9.4.3.2.6.11
           path: ${{ env.PROJECT_DIR }}
           if-no-files-found: error
       - name: Install Theos
