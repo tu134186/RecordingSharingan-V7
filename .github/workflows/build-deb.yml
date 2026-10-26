@@ -55,55 +55,13 @@ jobs:
           with open(os.environ['GITHUB_ENV'],'a') as f:
               f.write('PROJECT_DIR='+str(project)+'\n')
           PY
-      - name: Apply V7.11.9.4.3.2.6.6 Preferences-only improvements
+      - name: Apply V7.11.9.4.3.2.6.7 compact Settings and icon
         shell: bash
-        run: |
-          python3 - <<'PY'
-          import os,pathlib,plistlib
-          root=pathlib.Path(os.environ['PROJECT_DIR'])
-          old='7.11.9.4.3.2.6.5'
-          new='7.11.9.4.3.2.6.6'
-          for name in ('control','VERSION.txt'):
-              p=root/name
-              t=p.read_text()
-              assert old in t,(name,'base version mismatch')
-              p.write_text(t.replace(old,new))
-          p=root/'RecordingSharinganPrefs/Resources/Info.plist'
-          d=plistlib.loads(p.read_bytes())
-          assert d['CFBundleVersion']==old
-          d['CFBundleVersion']=new
-          d['CFBundleShortVersionString']=new
-          p.write_bytes(plistlib.dumps(d,fmt=plistlib.FMT_XML,sort_keys=False))
-          p=root/'RecordingSharinganPrefs/Resources/Root.plist'
-          d=plistlib.loads(p.read_bytes())
-          items=d if isinstance(d,list) else d['items']
-          rows=[i for i in items if i.get('cellClass')=='RSAdjustCell']
-          assert len(rows)==6 and all(i.get('height')==78 for i in rows)
-          for i in rows:i['height']=62
-          p.write_bytes(plistlib.dumps(d,fmt=plistlib.FMT_XML,sort_keys=False))
-          p=root/'RecordingSharinganPrefs/RSAdjustCell.m'
-          t=p.read_text()
-          changes={
-            'self.textLabel.frame=CGRectMake(16,3,w-32,27);':'self.textLabel.frame=CGRectMake(16,1,w-132,23);',
-            'self.minus.frame=CGRectMake(12,34,36,38);self.plus.frame=CGRectMake(w-52,34,36,38);':'self.minus.frame=CGRectMake(10,25,40,34);self.plus.frame=CGRectMake(w-50,25,40,34);',
-            'self.number.frame=CGRectMake(w-111,4,95,25);self.slider.frame=CGRectMake(55,38,MAX(30,w-115),30);':'self.number.frame=CGRectMake(w-110,1,94,23);self.slider.frame=CGRectMake(55,27,MAX(30,w-110),30);'}
-          for a,b in changes.items():
-              assert t.count(a)==1,('Unexpected slider layout',a)
-              t=t.replace(a,b)
-          p.write_text(t)
-          p=root/'layout/Library/PreferenceLoader/Preferences/RecordingSharingan.plist'
-          d=plistlib.loads(p.read_bytes())
-          entries=d if isinstance(d,list) else [d['entry']]
-          assert len(entries)==1 and entries[0].get('icon')=='/var/jb/Library/PreferenceLoader/Preferences/RecordingSharingan.png'
-          entries[0]['icon']='RecordingSharingan.png'
-          assert (root/'layout/Library/PreferenceLoader/Preferences/RecordingSharingan.png').is_file()
-          p.write_bytes(plistlib.dumps(d,fmt=plistlib.FMT_XML,sort_keys=False))
-          print('Applied icon, six compact slider rows, and unified version:',new)
-          PY
-      - name: Upload modified source ZIP
+        run: python3 scripts/apply-v6.7-preferences.py
+      - name: Upload V6.7 modified source ZIP
         uses: actions/upload-artifact@v4
         with:
-          name: RecordingSharingan-Source-V7.11.9.4.3.2.6.6
+          name: RecordingSharingan-Source-V7.11.9.4.3.2.6.7
           path: ${{ env.PROJECT_DIR }}
           if-no-files-found: error
       - name: Install Theos
