@@ -2,7 +2,7 @@ name: Build RecordingSharingan DEB
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, 'feature/material-library-v6.17']
     paths:
       - '*.zip'
       - '**/*.zip'
@@ -188,6 +188,9 @@ jobs:
           p.write_bytes(plistlib.dumps(d,fmt=plistlib.FMT_XML,sort_keys=False))
           print('All +/- controls now use 0.1 with matching decimal rounding')
           PY_STEP
+      - name: Apply 6.17 thumbnails independent sides and display names
+        shell: bash
+        run: python3 scripts/apply-v6.17-material-library.py
       - name: Package exact build source
         shell: bash
         run: |
@@ -201,7 +204,7 @@ jobs:
           assert count==1,count
           tweak.write_text(text)
           readme=root/'README.md'
-          readme.write_text('# RecordingSharingan '+version+'\n\nAdjustment buttons use 0.1 increments; independent custom PNG library preserved.\nDevice validation pending.\n')
+          readme.write_text('# RecordingSharingan '+version+'\n\nThumbnail gallery; independent left/right materials; display-only renaming; 0.1 increments and existing materials preserved.\nDevice validation pending.\n')
           info=plistlib.loads((root/'RecordingSharinganPrefs/Resources/Info.plist').read_bytes())
           assert info['CFBundleVersion']==version
           assert info['CFBundleShortVersionString']==version
