@@ -14,7 +14,8 @@ s=s.replace(needle,'''    NSString *custom = [@"/var/mobile/Library/Preferences/
 '''+needle,1)
 p.write_text(s)
 p=root/"RecordingSharinganPrefs/RSRootController.h";s=p.read_text()
-s=s.replace('#import <Preferences/PSListController.h>','#import <Preferences/PSListController.h>\n#import <UIKit/UIKit.h>')\ns=s.replace('@interface RSRootController : PSListController','@interface RSRootController : PSListController <UIDocumentPickerDelegate>')
+s=s.replace('#import <Preferences/PSListController.h>','#import <Preferences/PSListController.h>\n#import <UIKit/UIKit.h>')
+s=s.replace('@interface RSRootController : PSListController','@interface RSRootController : PSListController <UIDocumentPickerDelegate>')
 p.write_text(s)
 p=root/"RecordingSharinganPrefs/RSRootController.m";s=p.read_text()
 assert '#import "RSRootController.h"' in s
