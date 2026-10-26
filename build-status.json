@@ -1,10 +1,10 @@
 {
-  "run_id": "40307154248",
-  "run_url": "https://github.com/tu134186/RecordingSharingan-V7/actions/runs/40307154248",
-  "commit": "e16614baf893cc9e4bca7bfee5c266e211062e1d",
+  "run_id": "40308090131",
+  "run_url": "https://github.com/tu134186/RecordingSharingan-V7/actions/runs/40308090131",
+  "commit": "6c749a6e7c1aab88429f5f0e8521e08877e545db",
   "result": "success",
   "deb_files": [
-    "com.tu.recordingsharingan_7.11.9.4.3.2.6.11_iphoneos-arm64.deb"
+    "com.tu.recordingsharingan_7.11.9.4.3.2.6.12_iphoneos-arm64.deb"
   ],
   "errors": []
 }
