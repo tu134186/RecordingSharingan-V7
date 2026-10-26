@@ -18,8 +18,7 @@ s=s.replace('@interface RSRootController : PSListController','@interface RSRootC
 p.write_text(s)
 p=root/"RecordingSharinganPrefs/RSRootController.m";s=p.read_text()
 assert '#import "RSRootController.h"' in s
-s=s.replace('#import "RSRootController.h"','#import "RSRootController.h"\n#import <UIKit/UIKit.h>
-#import <string.h>\n#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>')
+s=s.replace('#import "RSRootController.h"','#import "RSRootController.h"\n#import <UIKit/UIKit.h>\n#import <string.h>\n#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>')
 s=s.replace('@implementation RSRootController','''@interface RSRootController ()
 @property(nonatomic,assign) NSInteger rsImportSlot;
 @end
