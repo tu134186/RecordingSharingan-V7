@@ -172,9 +172,16 @@ jobs:
         shell: bash
         run: |
           python3 - <<'PY_SOURCE'
-          import os,pathlib,zipfile,plistlib
+          import os,pathlib,zipfile,plistlib,re
           root=pathlib.Path(os.environ['PROJECT_DIR'])
           version=next(line.split(':',1)[1].strip() for line in (root/'control').read_text().splitlines() if line.startswith('Version:'))
+          tweak=root/'Tweak.xm'
+          text=tweak.read_text()
+          text,count=re.subn(r'(static NSString \* const RSVersion = @")[^"]+(";)',lambda m:m[1]+version+m[2],text)
+          assert count==1,count
+          tweak.write_text(text)
+          readme=root/'README.md'
+          readme.write_text('# RecordingSharingan '+version+'\\n\\nDefault PreferenceLoader icon; native Settings typography; compact sliders; PNG material import.\\nDevice validation pending.\\n')
           info=plistlib.loads((root/'RecordingSharinganPrefs/Resources/Info.plist').read_bytes())
           assert info['CFBundleVersion']==version
           assert info['CFBundleShortVersionString']==version
