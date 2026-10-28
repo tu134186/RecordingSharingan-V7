@@ -253,7 +253,8 @@ static void RSIVDILayoutPass(UIView *host, BOOL show) {
 }
 
 - (double)preferredHeightForBottomSafeArea {
-    return RSIVDIGrowBottomSafeArea(self, %orig);
+    double originalHeight = %orig;
+    return RSIVDIGrowBottomSafeArea(self, originalHeight);
 }
 
 %new
@@ -283,7 +284,9 @@ static void RSIVDILayoutPass(UIView *host, BOOL show) {
         gRSIVDIClamped = self;
         // @finally: if Apple's layout throws, the clamp must still be lifted —
         // otherwise this view permanently reports a clamped -bounds.
-        @try { %orig; }
+        @try {
+            %orig;
+        }
         @finally { gRSIVDIClamped = nil; }
     } else {
         %orig;
@@ -320,7 +323,8 @@ static void RSIVDILayoutPass(UIView *host, BOOL show) {
 }
 
 - (double)preferredHeightForBottomSafeArea {
-    return RSIVDIGrowBottomSafeArea(self, %orig);
+    double originalHeight = %orig;
+    return RSIVDIGrowBottomSafeArea(self, originalHeight);
 }
 
 %new
@@ -344,7 +348,9 @@ static void RSIVDILayoutPass(UIView *host, BOOL show) {
     if (show) {
         gRSIVDIClampAmount = RSIVDIStripFor(self);
         gRSIVDIClamped = self;
-        @try { %orig; }
+        @try {
+            %orig;
+        }
         @finally { gRSIVDIClamped = nil; }
     } else {
         %orig;
