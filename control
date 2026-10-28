@@ -1,0 +1,9 @@
+Package: com.tu.recordingsharingan
+Name: 录屏写轮眼
+Version: 7.11.9.4.3.2.6.20
+Architecture: iphoneos-arm64
+Description: 将 iPhone 灵动岛上的系统录屏红点替换为动态旋转的写轮眼，支持两款内置素材切换，并可调整素材大小、位置和旋转效果。支持录屏开启、停止及重新录屏时自动显示写轮眼。
+Maintainer: Tu
+Author: Tu
+Section: Tweaks
+Depends: firmware (>= 15.0), preferenceloader

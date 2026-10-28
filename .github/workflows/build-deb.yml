@@ -1,320 +1,96 @@
-name: Build RecordingSharingan DEB
+name: Build RecordingSharingan stop-fix
 on:
   workflow_dispatch:
   push:
-    branches: [main, 'feature/material-library-v6.17']
-    paths:
-      - '*.zip'
-      - '**/*.zip'
-      - 'Makefile'
-      - 'Tweak.xm'
-      - 'RecordingSharinganPrefs/**'
-      - 'layout/**'
-      - 'control'
-      - '.github/workflows/build-deb.yml'
+    branches: ['fix/recording-stop-v6.20']
+    paths: ['.ci/build-request']
 permissions:
   contents: write
 concurrency:
-  group: recordingsharingan-build
+  group: recordingsharingan-stop-fix
   cancel-in-progress: false
 jobs:
   build:
     runs-on: macos-15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Locate and extract source ZIP
-        shell: bash
+      - name: Validate source and package complete source
         run: |
           python3 - <<'PY'
-          import os, pathlib, zipfile, shutil
-          root=pathlib.Path.cwd()
-          if (root/'Makefile').is_file() and (root/'Tweak.xm').is_file():
-              project=root
-          else:
-              archives=sorted((p for p in root.rglob('*.zip') if '.git' not in p.parts),key=lambda p:p.stat().st_mtime,reverse=True)
-              if not archives:
-                  raise SystemExit('No source ZIP found. Upload a source ZIP to the repository.')
-              project=None
-              for archive in archives:
-                  dest=root/'_extracted_source'
-                  if dest.exists(): shutil.rmtree(dest)
-                  dest.mkdir()
-                  with zipfile.ZipFile(archive) as z:
-                      for entry in z.infolist():
-                          target=(dest/entry.filename).resolve()
-                          if not target.is_relative_to(dest.resolve()):
-                              raise SystemExit('Unsafe path in ZIP')
-                      z.extractall(dest)
-                  matches=[p.parent for p in dest.rglob('Makefile') if (p.parent/'Tweak.xm').is_file() and (p.parent/'control').is_file()]
-                  if matches:
-                      project=sorted(matches,key=lambda p:len(p.parts))[0]
-                      print('Source archive:',archive)
-                      break
-              if project is None: raise SystemExit('ZIP does not contain Makefile, Tweak.xm and control together.')
-          print('Project directory:',project)
-          with open(os.environ['GITHUB_ENV'],'a') as f:
-              f.write('PROJECT_DIR='+str(project)+'\n')
+          from pathlib import Path
+          import plistlib,zipfile,os
+          root=Path('.')
+          version=next(s.split(':',1)[1].strip() for s in Path('control').read_text().splitlines() if s.startswith('Version:'))
+          assert version=='7.11.9.4.3.2.6.20'
+          for name in ['RecordingSharingan.plist','Makefile','Tweak.xm']:
+              assert Path(name).is_file(),name
+          assert plistlib.loads(Path('RecordingSharingan.plist').read_bytes())['Filter']['Bundles']==['com.apple.springboard']
+          for p in root.rglob('*.plist'):
+              if '.git' not in p.parts:plistlib.loads(p.read_bytes())
+          for name in ['RecordingSharinganPrefs']:
+              info=plistlib.loads((root/name/'Resources/Info.plist').read_bytes())
+              assert info['CFBundleVersion']==version
+              assert info['CFBundleShortVersionString']==version
+          assert '[self adjust:0.1f]' in Path('RecordingSharinganPrefs/RSAdjustCell.m').read_text()
+          out=Path('_delivery');out.mkdir()
+          with zipfile.ZipFile(out/(version+'-RecordingSharingan-source.zip'),'w',zipfile.ZIP_DEFLATED) as z:
+              for p in sorted(root.rglob('*')):
+                  if p.is_file() and not any(x in p.parts for x in ('.git','.theos','packages','_delivery')) and p.suffix!='.zip':z.write(p,p.as_posix())
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('DELIVERY_VERSION='+version+'\n')
           PY
-      - name: Apply V7.11.9.4.3.2.6.8 compact Settings and smaller icon
-        shell: bash
-        run: python3 scripts/apply-v6.7-preferences.py
-      - name: Apply V6.9 labels and icon alignment metadata
-        shell: bash
-        run: python3 scripts/apply-v6.9-settings.py
-      - name: Apply V6.10 compact alignment and icon canvas
-        shell: bash
-        run: python3 scripts/apply-v6.10-settings.py
-      - name: Rebuild V6.11 icon from original source
-        shell: bash
-        run: python3 scripts/apply-v6.11-icon.py
-      - name: Restore PreferenceLoader default wrench icon
-        shell: bash
-        run: python3 scripts/apply-v6.12-default-icon.py
-      - name: Apply native Settings typography and compact slider spacing
-        shell: bash
-        run: python3 scripts/apply-v6.13-native-layout.py
-      # Importer uses nondeprecated iOS document picker API.
-      - name: Validate material import patch syntax
-        shell: bash
-        run: python3 -m py_compile scripts/apply-v6.14-material-picker.py
-      - name: Apply V6.15 independent material library
-        shell: bash
-        run: python3 scripts/apply-v6.14-material-picker.py
-      - name: Install Theos
-        shell: bash
+      - name: Install build dependencies
         run: |
           git clone --recursive --depth 1 https://github.com/theos/theos.git "$HOME/theos"
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
           brew install ldid xz dpkg
-          if ! find "$HOME/theos/sdks" -maxdepth 1 -name "*.sdk" -type d | grep -q .; then
+          if ! find "$HOME/theos/sdks" -maxdepth 1 -name '*.sdk' -type d | grep -q .; then
             git clone --depth 1 https://github.com/theos/sdks.git "$RUNNER_TEMP/theos-sdks"
             cp -R "$RUNNER_TEMP/theos-sdks/"*.sdk "$HOME/theos/sdks/"
           fi
-          ls -la "$HOME/theos/sdks"
-      - name: Fix RSRootController specifier mutability in extracted ZIP
-        shell: bash
+      - name: Compile integrated DEB
         run: |
-          python3 - <<'PY'
-          import os,pathlib
-          project=pathlib.Path(os.environ['PROJECT_DIR'])
-          files=list(project.rglob('RSRootController.m'))
-          if len(files)!=1:
-              raise SystemExit(f'Expected one RSRootController.m, found {len(files)}')
-          path=files[0]
-          src=path.read_text()
-          if '_specifiers = loaded;' not in src or '_specifiers = @[error];' not in src:
-              raise SystemExit('Unexpected controller source; refusing blind patch')
-          src=src.replace('_specifiers = loaded;', '_specifiers = [loaded mutableCopy];')
-          src=src.replace('_specifiers = @[error];', '_specifiers = [@[error] mutableCopy];')
-          path.write_text(src)
-          print('Fixed mutable specifier assignments:',path)
-          PY
-      - name: Fix Preferences private framework linking
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import os,pathlib,re
-          project=pathlib.Path(os.environ['PROJECT_DIR'])
-          candidates=list(project.rglob('Makefile'))
-          patched=0
-          for path in candidates:
-              if not any('Prefs' in line and ('FRAMEWORKS' in line or 'LIBRARIES' in line) for line in path.read_text().splitlines()): continue
-              src=path.read_text()
-              lines=src.splitlines(keepends=True)
-              result=[]
-              for line in lines:
-                  if re.match(r'^\s*\w+_FRAMEWORKS\s*[:+?]?=',line) and re.search(r'\bPreferences\b',line):
-                      line=re.sub(r'(?<!\S)Preferences(?!\S)','',line)
-                      patched+=1
-                  result.append(line)
-              if patched:
-                  result.append('\n# Settings loads Preferences.framework at runtime; no SDK link stub available.\n')
-                  result.append('ADDITIONAL_LDFLAGS += -Wl,-undefined,dynamic_lookup\n')
-                  path.write_text(''.join(result))
-                  print('Adjusted Preferences bundle linking:',path)
-          if not patched:
-              raise SystemExit('No Preferences framework entry found in Preferences bundle Makefile; refusing unverified patch')
-          PY
-      - name: Normalize Preferences Root.plist structure
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          import os,pathlib,plistlib
-          project=pathlib.Path(os.environ['PROJECT_DIR'])
-          files=list(project.rglob('RecordingSharinganPrefs/Resources/Root.plist'))
-          if len(files)!=1:
-              raise SystemExit(f'Expected one Preferences Root.plist, got {len(files)}')
-          path=files[0]
-          with path.open('rb') as f: data=plistlib.load(f)
-          if isinstance(data,list):
-              if not all(isinstance(item,dict) for item in data):
-                  raise SystemExit('Unexpected Root.plist array contents')
-              with path.open('wb') as f: plistlib.dump({'items':data},f,fmt=plistlib.FMT_XML,sort_keys=False)
-              print('Converted Root.plist array into Preferences items dictionary:',len(data),'items')
-          elif isinstance(data,dict) and isinstance(data.get('items'),list):
-              print('Root.plist already has valid items dictionary')
-          else:
-              raise SystemExit('Unexpected Root.plist root structure')
-          # Custom slider rows are not navigation links. PSLinkCell adds an unwanted disclosure arrow.
-          with path.open('rb') as f: normalized=plistlib.load(f)
-          items=normalized['items']
-          changed=0
-          for item in items:
-              if item.get('cellClass')=='RSAdjustCell' and item.get('cell')=='PSLinkCell':
-                  item['cell']='PSStaticTextCell'
-                  item.pop('detail',None)
-                  changed+=1
-          if changed:
-              with path.open('wb') as f: plistlib.dump(normalized,f,fmt=plistlib.FMT_XML,sort_keys=False)
-          print('Removed navigation arrows from custom slider rows:',changed)
-          PY
-      - name: Apply 0.1 adjustment increments and release version
-        shell: bash
-        run: |
-          python3 - <<'PY_STEP'
-          import os,pathlib,plistlib
-          root=pathlib.Path(os.environ['PROJECT_DIR'])
-          p=root/'RecordingSharinganPrefs/RSAdjustCell.m'
-          s=p.read_text()
-          assert '[self adjust:-0.5f]' in s and '[self adjust:0.5f]' in s
-          assert 'roundf((self.slider.value+d)*2)/2' in s
-          s=s.replace('[self adjust:-0.5f]','[self adjust:-0.1f]').replace('[self adjust:0.5f]','[self adjust:0.1f]').replace('roundf((self.slider.value+d)*2)/2','roundf((self.slider.value+d)*10.0f)/10.0f')
-          p.write_text(s)
-          old='7.11.9.4.3.2.6.15';new='7.11.9.4.3.2.6.16'
-          for name in ('control','VERSION.txt'):
-              p=root/name;s=p.read_text();assert old in s;p.write_text(s.replace(old,new))
-          p=root/'RecordingSharinganPrefs/Resources/Info.plist'
-          d=plistlib.loads(p.read_bytes());d['CFBundleVersion']=new;d['CFBundleShortVersionString']=new
-          p.write_bytes(plistlib.dumps(d,fmt=plistlib.FMT_XML,sort_keys=False))
-          print('All +/- controls now use 0.1 with matching decimal rounding')
-          PY_STEP
-      - name: Apply 6.17 thumbnails independent sides and display names
-        shell: bash
-        run: python3 scripts/apply-v6.17-material-library.py
-      - name: Package exact build source
-        shell: bash
-        run: |
-          python3 - <<'PY_SOURCE'
-          import os,pathlib,zipfile,plistlib,re
-          root=pathlib.Path(os.environ['PROJECT_DIR'])
-          version=next(line.split(':',1)[1].strip() for line in (root/'control').read_text().splitlines() if line.startswith('Version:'))
-          tweak=root/'Tweak.xm'
-          text=tweak.read_text()
-          text,count=re.subn(r'(static NSString \* const RSVersion = @")[^"]+(";)',lambda m:m[1]+version+m[2],text)
-          assert count==1,count
-          tweak.write_text(text)
-          readme=root/'README.md'
-          readme.write_text('# RecordingSharingan '+version+'\n\nThumbnail gallery; independent left/right materials; display-only renaming; 0.1 increments and existing materials preserved.\nDevice validation pending.\n')
-          info=plistlib.loads((root/'RecordingSharinganPrefs/Resources/Info.plist').read_bytes())
-          assert info['CFBundleVersion']==version
-          assert info['CFBundleShortVersionString']==version
-          out=pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'_delivery'
-          out.mkdir(exist_ok=True)
-          archive=out/(version+'-RecordingSharingan-source.zip')
-          with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
-              for p in sorted(root.rglob('*')):
-                  if p.is_file() and not any(x in p.relative_to(root).parts for x in ('.git','.theos','packages')):
-                      z.write(p,p.relative_to(root))
-          with zipfile.ZipFile(archive) as z:
-              assert z.testzip() is None
-              assert all(n in z.namelist() for n in ['Makefile','Tweak.xm','control'])
-          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('DELIVERY_VERSION='+version+'\n')
-          print('Verified complete build source:',archive,archive.stat().st_size)
-          PY_SOURCE
-      - name: Upload exact build source
-        uses: actions/upload-artifact@v4
-        with:
-          name: RecordingSharingan-Source
-          path: _delivery/*-source.zip
-          if-no-files-found: error
-      - name: Compile DEB
-        shell: bash
-        run: |
-          cd "$PROJECT_DIR"
           set -o pipefail
-          make clean package FINALPACKAGE=1 2>&1 | tee "$GITHUB_WORKSPACE/build-output.log"
-      - name: Publish build report
-        if: always()
-        shell: bash
+          make clean package FINALPACKAGE=1 2>&1 | tee build-output.log
+      - name: Verify packaged modules and dependencies
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import subprocess,plistlib,shutil,hashlib,os
+          packages=list(Path('packages').glob('*.deb'));assert len(packages)==1,packages
+          deb=packages[0]
+          assert subprocess.check_output(['dpkg-deb','-f',str(deb),'Version'],text=True).strip()==os.environ['DELIVERY_VERSION']
+          dest=Path('_unpacked');subprocess.run(['dpkg-deb','-x',str(deb),str(dest)],check=True)
+          for binary in ['RecordingSharingan.dylib']:
+              files=list(dest.rglob(binary));assert len(files)==1,files
+          for name in ['RecordingSharinganPrefs.bundle']:
+              bundles=list(dest.rglob(name));assert len(bundles)==1,bundles
+              info=plistlib.loads((bundles[0]/'Info.plist').read_bytes())
+              assert info['CFBundleVersion']==os.environ['DELIVERY_VERSION']
+              assert (bundles[0]/info['CFBundleExecutable']).is_file()
+          assert not list(dest.rglob('RSIslandVolume.dylib'))
+          linked=subprocess.check_output(['otool','-L',str(next(dest.rglob('RecordingSharingan.dylib')))],text=True)
+          out=Path('_delivery')
+          shutil.copy2(deb,out/(os.environ['DELIVERY_VERSION']+'-RecordingSharingan.deb'))
+          (out/'BUILD-VERIFICATION.txt').write_text('Validated original-only runtime, single preference bundle, matching versions, no volume dylib.\n'+linked)
+          files=sorted(out.iterdir());(out/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in files))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RecordingSharingan-6.20
+          path: _delivery/*
+          if-no-files-found: error
+      - name: Publish direct downloads
         env:
           GH_TOKEN: ${{ github.token }}
-          BUILD_RESULT: ${{ job.status }}
         run: |
-          python3 - <<'PY'
-          import os,json,pathlib,base64,urllib.request,urllib.error,re
-          root=pathlib.Path(os.environ['GITHUB_WORKSPACE'])
-          logfile=root/'build-output.log'
-          lines=logfile.read_text(errors='replace').splitlines() if logfile.exists() else []
-          errors=[re.sub(r'\x1b\[[0-9;]*m','',line) for line in lines if re.search(r'error:|fatal:|Error [0-9]|undefined symbols|No rule to make target',line,re.I)]
-          packages=list(root.rglob('packages/*.deb'))
-          status={'run_id':os.environ['GITHUB_RUN_ID'],'run_url':f"https://github.com/{os.environ['GITHUB_REPOSITORY']}/actions/runs/{os.environ['GITHUB_RUN_ID']}",'commit':os.environ['GITHUB_SHA'],'result':os.environ['BUILD_RESULT'],'deb_files':[p.name for p in packages],'errors':errors[-30:]}
-          report=json.dumps(status,ensure_ascii=False,indent=2)+'\n'
-          (root/'build-status.json').write_text(report)
-          summary=pathlib.Path(os.environ['GITHUB_STEP_SUMMARY'])
-          with summary.open('a') as f:
-              f.write('## RecordingSharingan build result\n\n')
-              f.write(f"**Status:** {status['result']}  |  **Run:** {status['run_id']}\n\n")
-              f.write('**DEB:** '+(', '.join(status['deb_files']) if packages else 'Not generated')+'\n\n')
-              if errors:f.write('### Errors\n```\n'+'\n'.join(errors[-12:])[:10000]+'\n```\n')
-          url=f"https://api.github.com/repos/{os.environ['GITHUB_REPOSITORY']}/contents/build-status.json"
-          headers={'Authorization':'Bearer '+os.environ['GH_TOKEN'],'Accept':'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}
-          existing=None
-          try:
-              req=urllib.request.Request(url,headers=headers)
-              with urllib.request.urlopen(req) as resp:existing=json.load(resp).get('sha')
-          except urllib.error.HTTPError as e:
-              if e.code!=404:raise
-          body={'message':'Update latest RecordingSharingan build status','content':base64.b64encode(report.encode()).decode(),'branch':os.environ['GITHUB_REF_NAME']}
-          if existing:body['sha']=existing
-          req=urllib.request.Request(url,data=json.dumps(body).encode(),headers={**headers,'Content-Type':'application/json'},method='PUT')
-          try:
-              with urllib.request.urlopen(req) as resp:print('Published build status:',resp.status)
-          except urllib.error.HTTPError as e:
-              print('WARNING: Cannot update fixed status file:',e.code,e.read().decode(errors='replace')[:1200])
-              print('Status remains available in uploaded diagnostic artifact.')
-          PY
-      - name: Upload diagnostic logs
-        if: always()
+          gh release create "delivery-${DELIVERY_VERSION}-${GITHUB_RUN_ID}" _delivery/* --target "$GITHUB_SHA" --title "RecordingSharingan ${DELIVERY_VERSION}" --notes "Based on uploaded 6.17. Deferred native-layout work, guarded discovery, state-only reconciliation. No volume module. Device reproduction pending. Run ${GITHUB_RUN_ID}; commit ${GITHUB_SHA}."
+      - name: Upload failure evidence
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: RecordingSharingan-Diagnostics
+          name: RecordingSharingan-6.20-build-logs
           path: |
             build-output.log
-            build-status.json
+            _delivery/*-source.zip
           if-no-files-found: warn
-      - name: Prepare flat DEB artifact
-        if: ${{ always() && hashFiles('**/packages/*.deb') != '' }}
-        shell: bash
-        run: |
-          mkdir -p "$GITHUB_WORKSPACE/_delivery_deb"
-          find "$PROJECT_DIR/packages" -maxdepth 1 -type f -name '*.deb' -exec cp {} "$GITHUB_WORKSPACE/_delivery_deb/" \;
-          ls -lah "$GITHUB_WORKSPACE/_delivery_deb"
-      - name: Upload DEB
-        if: ${{ always() && hashFiles('**/packages/*.deb') != '' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: RecordingSharingan-DEB
-          path: _delivery_deb/*.deb
-          if-no-files-found: error
-      - name: Verify DEB and publish downloadable delivery
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          python3 - <<'PY_VERIFY'
-          import os,pathlib,subprocess,shutil,hashlib
-          root=pathlib.Path(os.environ['PROJECT_DIR'])
-          packages=list((root/'packages').glob('*.deb'))
-          assert len(packages)==1,packages
-          p=packages[0]
-          version=subprocess.check_output(['dpkg-deb','-f',str(p),'Version'],text=True).strip()
-          assert version==os.environ['DELIVERY_VERSION'],(version,os.environ['DELIVERY_VERSION'])
-          listing=subprocess.check_output(['dpkg-deb','-c',str(p)],text=True)
-          assert 'RecordingSharingan.dylib' in listing
-          assert 'RecordingSharinganPrefs.bundle' in listing
-          dest=pathlib.Path(os.environ['GITHUB_WORKSPACE'])/'_delivery'
-          shutil.copy2(p,dest/(version+'-RecordingSharingan.deb'))
-          files=sorted(dest.iterdir())
-          (dest/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256(p.read_bytes()).hexdigest()+'  '+p.name+'\n' for p in files))
-          PY_VERIFY
-          gh release create "delivery-${DELIVERY_VERSION}-${GITHUB_RUN_ID}" _delivery/* --target "$GITHUB_SHA" --title "RecordingSharingan ${DELIVERY_VERSION}" --notes "Verified DEB and exact build source. Run: ${GITHUB_RUN_ID}; commit: ${GITHUB_SHA}. Device testing pending."
