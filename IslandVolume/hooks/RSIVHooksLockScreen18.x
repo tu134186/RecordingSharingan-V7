@@ -6,7 +6,7 @@
 // Force the flag on the view, let the scene re-negotiate its size via
 // -updatePreferredContentSize, and publish the shown-state onto the Darwin
 // visibility token for SpringBoard.
-#import "RSIVShared.h"
+#import "../RSIVShared.h"
 
 static void * const kRSIVPushed18Key = (void *)&kRSIVPushed18Key;
 

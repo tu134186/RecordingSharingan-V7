@@ -8,7 +8,7 @@
 // cross-process touch flag while touched (RSIVFlagTouch in RSIVHooksVolumeView.x)
 // and the island's gesture is failed whenever the flag is up. NextUp 3 ships
 // the same mechanism with an independent flag.
-#import "RSIVShared.h"
+#import "../RSIVShared.h"
 
 @interface SBSystemApertureResizeGestureRecognizer : UIGestureRecognizer @end
 @interface SBSystemApertureLongPressGestureRecognizer : UIGestureRecognizer @end

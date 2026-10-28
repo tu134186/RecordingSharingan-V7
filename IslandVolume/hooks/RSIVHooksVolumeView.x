@@ -9,7 +9,7 @@
 //  2  iOS 17+: volume updates are dropped while isOnScreen is NO, and Apple
 //     only sets it where it believes volume is showing. Report YES while our
 //     force owns the enclosing player view.
-#import "RSIVShared.h"
+#import "../RSIVShared.h"
 
 // A pure observer recognizer: raises the cross-process touch flag at touch-DOWN
 // so SpringBoard can fail the island's gestures and suppress the volume ribbon

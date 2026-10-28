@@ -10,7 +10,7 @@
 // Must stay ≤ iOS 17: on 18+ the lock-screen content is MRULockscreenView
 // (RSIVHooksLockScreen18.x) and this class family only backs surfaces that
 // manage their own volume UI.
-#import "RSIVShared.h"
+#import "../RSIVShared.h"
 
 // Last pushed show-state and measured width per VC. Skips the forced relayout
 // when the platter already reflects reality: the synchronous re-layout in

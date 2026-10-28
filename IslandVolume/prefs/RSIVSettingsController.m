@@ -1,7 +1,7 @@
 // RecordingSharingan integration UI for Crescendo-derived module. GPL-3.0.
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
-#import "RSIVPrefs.h"
+#import "../RSIVPrefs.h"
 @interface RSIVSettingsController : PSListController @end
 @implementation RSIVSettingsController
 - (NSArray *)specifiers {

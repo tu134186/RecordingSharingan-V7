@@ -14,7 +14,7 @@
 // during Apple's layout pass, then place the strip explicitly. The strip sits
 // above a visible NextUp 3 row, keeping the lock-screen order — transport,
 // volume, up-next.
-#import "RSIVShared.h"
+#import "../RSIVShared.h"
 #import <mach-o/dyld.h>
 
 // Above a NextUp row the strip only needs the slider plus small gaps; alone it
