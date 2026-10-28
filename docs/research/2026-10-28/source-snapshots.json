@@ -1,0 +1,79 @@
+{
+  "date": "2026-10-28",
+  "repositories": {
+    "loader": {
+      "repository": "https://github.com/Fury-2K/Sharingan-Loader",
+      "commit": "c8e3de994dcdf6716775e99540cf260ff0b5c9ff",
+      "files": {
+        "Sources/SharinganLoader/SharinganLoader.swift": "10b33f94faeecd8a8b206c4e6d10e33def6e0dbfb681f7205a56eb28421c09f5",
+        "Sources/SharinganLoader/TomoeView.swift": "9dc4d784999b04bc15bd3944d91c71b91a414fa6093a67a75c79c8841719af44",
+        "LICENSE": "4f9b1f0c4e7e8f1748f824d13d92eb8ec985189f4f3bc57eb749377e10e790d3",
+        "Package.swift": "d3db43f12983bcc46076877e88246e84a1e0e4c5c5b24fc02fe412c45deb397e"
+      }
+    },
+    "designer": {
+      "repository": "https://github.com/onlyil/sharingan-design",
+      "commit": "02b6d751f6ce8f4b565cde017dacceccf7ef73f9",
+      "files": {
+        "app/design/components/preview-panel/sharingan-preview.tsx": "ad65ab49a5122d2630e435b1807ce75da92a3a0cdd5cb38f4ba0ce745fd4d39b",
+        "README.md": "a010d17bfafd8a85d3de845be41d441ec5976d2bf6f0fa958c56a2e771ad6496"
+      }
+    },
+    "triggr": {
+      "repository": "https://github.com/Jond-ie/triggr",
+      "commit": "3d8d916b1bfb5bff9def13790e79f1883689a621",
+      "files": {
+        "Tweak/Tweak.x": "1a9ff0d8327378e34341bcc5cac3a77990a9b3573d35a4cef099a2ff2609b9e2",
+        "EXTENSIONS.md": "0ffe3621777f24d7a43efe18920d79240802133d85f765cc4c7e5844d212d37c",
+        "README.md": "3f4963ed11e1855d3e0923a4ea21f5990f4487576e039dc96d26644e70ad5a1b",
+        "LICENSE": "3972dc9744f6499f0f9b2dbf76696f2ae7ad8af9b23dde66d6af86c9dfb36986"
+      }
+    },
+    "libtriggr": {
+      "repository": "https://github.com/Jond-ie/libtriggr",
+      "commit": "951deedd2c76194968f4d36092564541a15b3055",
+      "files": {
+        "README.md": "0d9b857bc153d6444aea8087a311090f34f4bd4a50a0fcb97c86bb4949d7e945",
+        "Triggr.h": "fadb4e809425c8e5e04888c516f7c6170d44c4403e5926b760dbaa652e477ab0",
+        "LICENSE": "c9833ebbe651b04df23508b1c4800a5909a2e76c848f2951911e9b022b59005a"
+      }
+    },
+    "visibleisland": {
+      "repository": "https://github.com/ethxnn88/visibleisland",
+      "commit": "85b14f94eb5e9e671daac6454928a6d6164649eb",
+      "files": {
+        "Tweak.xm": "dfeed280016b317f5bcf43bf2af3d5b69fe78975c247085287be0e99a71481f2",
+        "README.md": "3c98e55436c32e249d65ac35b529578131e685664b210284efce5cac66b75676"
+      }
+    },
+    "recording-time": {
+      "repository": "https://github.com/h4ckua11/ScreenRecording-Time",
+      "commit": "f6c99b9415bf3fb654f41ef9dc133f700c497c7d",
+      "files": {
+        "Tweak.xm": "e6b2eae2e39620ca60472a503b2fe683950a1425591bc05147a584c0307049d4",
+        "control": "cf7577165c8c597af32c851deece2aec1b0e9879e663e1b4f0747ad5614edaac"
+      }
+    },
+    "dnd-recording": {
+      "repository": "https://github.com/gilshahar7/DNDMyRecording",
+      "commit": "70f933ee406cd77dd0c069a35a86492b1ff394fc",
+      "files": {
+        "Tweak.xm": "b2e308f91378195a8e76e9f266f45acf65e489c772239a24a0f3963292f6b479",
+        "control": "0cdc52a0999369fc1bce2d083aed2f4c34391cab4f85eb079149d8dafd69d0e4"
+      }
+    }
+  },
+  "static_checks": {
+    "tomoe_move_commands": 1,
+    "tomoe_quadratic_commands": 2,
+    "declares_animatable_data": false,
+    "loader_timer_calls": 5,
+    "loader_has_disappearance_cleanup": false,
+    "designer_rotation_is_per_frame_not_elapsed_time": true,
+    "baseline_version": "7.11.9.4.3.2.6.17",
+    "baseline_tweak_sha256": "754c383e9c92b3e9f4bc8aaf92aaeed6d36853b6dce3e2f5775b401c47ed0a36",
+    "baseline_eye_interaction_disabled": true,
+    "baseline_rotation_restart_starts_at_zero": true
+  },
+  "device_tests_performed": false
+}
