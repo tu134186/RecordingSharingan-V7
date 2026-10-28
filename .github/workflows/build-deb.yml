@@ -23,6 +23,9 @@ jobs:
           root=Path('.')
           version=next(s.split(':',1)[1].strip() for s in Path('control').read_text().splitlines() if s.startswith('Version:'))
           assert version=='7.11.9.4.3.2.6.19'
+          for name in ['RecordingSharingan.plist','IslandVolume/RSIslandVolume.plist','Makefile','Tweak.xm','IslandVolume/prefs/Makefile']:
+              assert Path(name).is_file(),name
+          assert plistlib.loads(Path('RecordingSharingan.plist').read_bytes())['Filter']['Bundles']==['com.apple.springboard']
           for p in root.rglob('*.plist'):
               if '.git' not in p.parts:plistlib.loads(p.read_bytes())
           for name in ['RecordingSharinganPrefs','IslandVolume/prefs']:
