@@ -1324,13 +1324,15 @@ static void RSV7117ArmPresentationRemount(void);
 static void RSV7117ConsumePresentationEvent(UIView *v, NSString *event);
 
 static void RSV7113ScheduleSingleMount(UIView *v) {
-    if (!RSInitialized || !RSRecordingActive || !v || !v.window) return;
+    if (!RSInitialized || !RSRecordingActive || RSCaptureStopPending || !v || !v.window ||
+        ![UIScreen mainScreen].isCaptured) return;
     RSV7113PendingAccessory = v;
     if (RSV7113MountScheduled || RSV7113Mounting) return;
     RSV7113MountScheduled = YES;
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.03 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         RSV7113MountScheduled = NO;
-        if (RSV7113Mounting || !RSInitialized || !RSRecordingActive || !RSEyeMountedElement) return;
+        if (RSV7113Mounting || !RSInitialized || !RSRecordingActive || RSCaptureStopPending ||
+            ![UIScreen mainScreen].isCaptured || !RSEyeMountedElement) return;
         UIView *candidate = RSV7113PendingAccessory;
         if (!candidate || !candidate.window) return;
         RSV7113Mounting = YES;
@@ -1540,6 +1542,7 @@ static BOOL RSPreferenceSideForHost(UIView *host) {
 
 // 位置同步：监听 SAUIElementView frame/center/layout，写轮眼跟随宿主
 static void RSV6SyncEyeToElement(UIView *element, BOOL allowShow) {
+    if (!RSRecordingActive || RSCaptureStopPending || ![UIScreen mainScreen].isCaptured) return;
     if (!RSEyeMountedInElement || !RSEyeMountedElement || RSEyeMountedElement != element) return;
     UIImageView *eye = RSSharinganView;
     if (!eye || !element.window) return;
@@ -1670,7 +1673,8 @@ static void RSV6SyncEyeToElement(UIView *element, BOOL allowShow) {
 
 // 挂载写轮眼到 ScreenRecording 元素（防重复 addSubview）
 static void RSV6MountEyeIntoElement(UIView *element) {
-    if (!element || !element.window || !RSRecordingActive || !RSIsEnabled()) return;
+    if (!element || !element.window || !RSRecordingActive || RSCaptureStopPending ||
+        ![UIScreen mainScreen].isCaptured || !RSIsEnabled()) return;
 
     UIImageView *eye = RSEyeViewEnsure();
     if (!eye) return;

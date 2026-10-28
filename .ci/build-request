@@ -1,1 +1,1 @@
-6.20 complete-stage notification/recording-stop fix
+6.20 final stage: guard every mount/sync entry during capture-off
