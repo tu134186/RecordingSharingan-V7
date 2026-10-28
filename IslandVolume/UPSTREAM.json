@@ -1,0 +1,47 @@
+{
+  "project": "https://github.com/Yves000/Crescendo",
+  "commit": "33c60a69d76454c268709b381ad987832403e534",
+  "license": "GPL-3.0",
+  "files": {
+    "CRPrefs.h": {
+      "upstream_sha256": "70131df692084274930cdcc0f799331ca7d364f5e2b8c9dc153bf8ff3f47ad83",
+      "adapted_path": "IslandVolume/RSIVPrefs.h"
+    },
+    "CRPrefs.m": {
+      "upstream_sha256": "9c2646843b2f8cbd7cbaa895ee92dbf4b25225e2214a679508a68f3bc80c705e",
+      "adapted_path": "IslandVolume/RSIVPrefs.m"
+    },
+    "CRPrivate.h": {
+      "upstream_sha256": "bb12bf2fff253c06941eb91482658d5f8f6e05f1575f41500b6d71b7cb9803df",
+      "adapted_path": "IslandVolume/RSIVPrivate.h"
+    },
+    "CRShared.h": {
+      "upstream_sha256": "009fe26d5f15723eb3ad2777ab3b2cde5ea0df9e84a8f6dfd52a5758309124cf",
+      "adapted_path": "IslandVolume/RSIVShared.h"
+    },
+    "CRShared.m": {
+      "upstream_sha256": "e51479b8d9020663af1bc885c59028d747c5cbf6e1346948b9179c03e511a917",
+      "adapted_path": "IslandVolume/RSIVShared.m"
+    },
+    "hooks/CRHooksVolumeView.x": {
+      "upstream_sha256": "d8123204e0b595a999300282f950a49323fb0cb2c786743a282cc3ce89e529b4",
+      "adapted_path": "IslandVolume/hooks/RSIVHooksVolumeView.x"
+    },
+    "hooks/CRHooksSpringBoard.x": {
+      "upstream_sha256": "b2ca6e9389a58e3050b4ddef88ceb827fdf2893d15645607e9857fbfd5674da8",
+      "adapted_path": "IslandVolume/hooks/RSIVHooksSpringBoard.x"
+    },
+    "hooks/CRHooksLockScreen16.x": {
+      "upstream_sha256": "e4dac8f43da9d027623fc7c5bef076a78ae3989e78504f7b4f45b92956bfcbc7",
+      "adapted_path": "IslandVolume/hooks/RSIVHooksLockScreen16.x"
+    },
+    "hooks/CRHooksLockScreen18.x": {
+      "upstream_sha256": "82974ad604a38372833fed4aff2ea0e37f1e6cd34ae9002301c71a5836da2c00",
+      "adapted_path": "IslandVolume/hooks/RSIVHooksLockScreen18.x"
+    },
+    "hooks/CRHooksDynamicIsland.x": {
+      "upstream_sha256": "5ea1c8efa6bc11e47e6ea52cb5a95bc0247cefa7ea499f638d6e6395be918d73",
+      "adapted_path": "IslandVolume/hooks/RSIVHooksDynamicIsland.x"
+    }
+  }
+}

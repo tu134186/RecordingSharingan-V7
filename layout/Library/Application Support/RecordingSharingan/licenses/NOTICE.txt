@@ -1,0 +1,1 @@
+Crescendo by Yves, GPL-3.0. Upstream commit33c60a69. Modified 2026-10-28; full source: https://github.com/tu134186/RecordingSharingan-V7
